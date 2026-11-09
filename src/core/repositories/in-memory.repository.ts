@@ -8,6 +8,13 @@ export abstract class InMemoryRepository<
 {
   protected store: Map<string, T> = new Map();
 
+  /**
+   * Fields matched by case-insensitive substring (free-text search).
+   * Every other string field is matched exactly (case-insensitive), so enum
+   * values like `active` don't also match `inactive`.
+   */
+  protected readonly searchableFields: ReadonlyArray<keyof T> = [];
+
   findAll(filters?: Partial<Omit<T, 'id'>>): T[] {
     const all = Array.from(this.store.values());
     if (!filters || Object.keys(filters).length === 0) return all;
@@ -17,7 +24,11 @@ export abstract class InMemoryRepository<
         if (value === undefined || value === null) return true;
         const itemValue = (item as Record<string, unknown>)[key];
         if (typeof value === 'string') {
-          return String(itemValue).toLowerCase().includes(value.toLowerCase());
+          const needle = value.toLowerCase();
+          const haystack = String(itemValue ?? '').toLowerCase();
+          return this.searchableFields.includes(key as keyof T)
+            ? haystack.includes(needle)
+            : haystack === needle;
         }
         return itemValue === value;
       }),
