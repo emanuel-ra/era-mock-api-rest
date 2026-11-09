@@ -43,14 +43,15 @@ export class SeedService implements OnModuleInit {
   private async seedUsers() {
     const password = await bcrypt.hash('password123', 10);
 
+    // Fixed ids keep issued JWTs valid across restarts and POST /seed/reset.
     const users = [
-      { email: 'admin@mock.dev', name: 'Admin User', role: Role.Admin },
-      { email: 'user@mock.dev', name: 'Regular User', role: Role.User },
-      { email: 'viewer@mock.dev', name: 'Viewer User', role: Role.Viewer },
+      { id: '00000000-0000-4000-8000-000000000001', email: 'admin@mock.dev', name: 'Admin User', role: Role.Admin },
+      { id: '00000000-0000-4000-8000-000000000002', email: 'user@mock.dev', name: 'Regular User', role: Role.User },
+      { id: '00000000-0000-4000-8000-000000000003', email: 'viewer@mock.dev', name: 'Viewer User', role: Role.Viewer },
     ];
 
-    for (const u of users) {
-      this.usersRepo.create({ ...u, password });
+    for (const { id, ...u } of users) {
+      this.usersRepo.create({ ...u, password }, id);
     }
   }
 
