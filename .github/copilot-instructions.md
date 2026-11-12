@@ -25,9 +25,12 @@ npm run start        # single-process mode
 npm run build        # NestJS production build
 npm run lint         # ESLint over src/
 npm run type-check  # TypeScript compile check with noEmit
+npm test            # Jest unit tests (src/**/*.spec.ts)
+npm run test:cov    # unit tests with coverage
+npx jest src/customers/customers.service.spec.ts   # single test file
 ```
 
-There is no automated test runner configured in this repo (`package.json` has no `test` script), so there is no single-test command to use. Validation is currently via `npm run lint` and `npm run type-check`.
+Unit tests use Jest + ts-jest and live next to the code as `*.spec.ts`. There are no e2e tests yet. Validation is via `npm run lint`, `npm run type-check` and `npm test`.
 
 ## High-level architecture
 
