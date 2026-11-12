@@ -54,9 +54,10 @@ Keep the change focused on the request. Match the existing patterns in the codeb
 ```bash
 npm run type-check
 npm run lint
+npm test
 ```
 
-Both must pass. There is no test suite; for behavior changes, also start the app (`npm run start:dev`) and exercise the affected endpoints when practical, and report what you checked.
+All three must pass. Add or update unit tests (`*.spec.ts` next to the changed file) for new or changed service, repository or guard logic. There are no e2e tests yet; for behavior changes, also start the app (`npm run start:dev`) and exercise the affected endpoints when practical, and report what you checked.
 
 ## 7. Document and commit
 
