@@ -35,4 +35,4 @@ JWT_EXPIRES_IN=1h
 - Seed data and default credentials: @docs/seed-data.md
 - Steps to add a new resource: @docs/adding-a-resource.md
 
-Working rules in `.claude/rules/` (loaded automatically): git/commit conventions and keeping `docs/features.md` up to date.
+Working rules in `.claude/rules/` (loaded automatically): git workflow and branch naming, commit conventions, and keeping `docs/features.md` up to date. The `/start-work` skill (`.claude/skills/start-work/`) runs the full branch → implement → review → PR workflow.
