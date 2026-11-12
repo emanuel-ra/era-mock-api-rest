@@ -20,7 +20,7 @@ NestJS REST API that runs entirely **in memory** — no database. All data is lo
 
 ### Data layer
 
-`InMemoryRepository<T>` ([src/core/repositories/in-memory.repository.ts](src/core/repositories/in-memory.repository.ts)) is the single generic base class for all storage. It wraps a `Map<string, T>` and provides `findAll` (with optional partial-match filtering), `findById`, `findByIdOrFail`, `create` (auto-assigns UUID + timestamps), `update`, `delete`, `count`, and `clear`. Domain repositories extend this class and add any entity-specific lookups (e.g. `findByEmail` on `UsersRepository`).
+`InMemoryRepository<T>` ([src/core/repositories/in-memory.repository.ts](src/core/repositories/in-memory.repository.ts)) is the single generic base class for all storage. It wraps a `Map<string, T>` and provides `findAll` (with optional filtering: string fields match exactly, case-insensitive, unless listed in the subclass's `searchableFields`, which match by substring), `findById`, `findByIdOrFail`, `create` (auto-assigns UUID + timestamps), `update`, `delete`, `count`, and `clear`. Domain repositories extend this class and add any entity-specific lookups (e.g. `findByEmail` on `UsersRepository`).
 
 ### Modules
 
