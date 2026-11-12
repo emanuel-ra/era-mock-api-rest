@@ -23,14 +23,15 @@ npm install
 npm run start:dev    # watch mode
 npm run start        # single-process mode
 npm run build        # NestJS production build
-npm run lint         # ESLint over src/
+npm run lint         # ESLint over src/ and test/
 npm run type-check  # TypeScript compile check with noEmit
 npm test            # Jest unit tests (src/**/*.spec.ts)
 npm run test:cov    # unit tests with coverage
+npm run test:e2e    # e2e tests over HTTP (test/**/*.e2e-spec.ts)
 npx jest src/customers/customers.service.spec.ts   # single test file
 ```
 
-Unit tests use Jest + ts-jest and live next to the code as `*.spec.ts`. There are no e2e tests yet. Validation is via `npm run lint`, `npm run type-check` and `npm test`.
+Unit tests use Jest + ts-jest and live next to the code as `*.spec.ts`. E2E tests live in `test/*.e2e-spec.ts` and use Supertest against the full `AppModule` (see `test/helpers.ts`). Validation is via `npm run lint`, `npm run type-check`, `npm test` and `npm run test:e2e`.
 
 ## High-level architecture
 

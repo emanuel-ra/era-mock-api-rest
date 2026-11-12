@@ -55,9 +55,10 @@ Keep the change focused on the request. Match the existing patterns in the codeb
 npm run type-check
 npm run lint
 npm test
+npm run test:e2e
 ```
 
-All three must pass. Add or update unit tests (`*.spec.ts` next to the changed file) for new or changed service, repository or guard logic. There are no e2e tests yet; for behavior changes, also start the app (`npm run start:dev`) and exercise the affected endpoints when practical, and report what you checked.
+All four must pass. Add or update unit tests (`*.spec.ts` next to the changed file) for new or changed service, repository or guard logic. For new or changed endpoints, roles or validation, add or update e2e tests in `test/<module>.e2e-spec.ts`.
 
 ## 7. Document and commit
 
