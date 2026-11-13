@@ -1,0 +1,22 @@
+meta {
+  name: List categories filtered and sorted
+  type: http
+  seq: 2
+}
+
+get {
+  url: {{baseUrl}}/categories?name=o&isActive=true&sortBy=name&order=desc
+  body: none
+  auth: inherit
+}
+
+params:query {
+  name: o
+  isActive: true
+  sortBy: name
+  order: desc
+}
+
+assert {
+  res.status: eq 200
+}

@@ -1,0 +1,31 @@
+meta {
+  name: Create order with too much quantity
+  type: http
+  seq: 10
+}
+
+post {
+  url: {{baseUrl}}/orders
+  body: json
+  auth: inherit
+}
+
+body:json {
+  {
+    "customerId": "{{seedCustomerId}}",
+    "items": [
+      {
+        "productId": "{{stockProductId}}",
+        "quantity": 100000
+      }
+    ]
+  }
+}
+
+assert {
+  res.status: eq 201
+}
+
+script:post-response {
+  bru.setVar("bigOrderId", res.body.id);
+}

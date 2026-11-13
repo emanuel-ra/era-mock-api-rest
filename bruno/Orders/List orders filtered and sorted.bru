@@ -1,0 +1,22 @@
+meta {
+  name: List orders filtered and sorted
+  type: http
+  seq: 2
+}
+
+get {
+  url: {{baseUrl}}/orders?status=paid&sortBy=total&order=desc
+  body: none
+  auth: inherit
+}
+
+params:query {
+  status: paid
+  ~customerId: {{seedCustomerId}}
+  sortBy: total
+  order: desc
+}
+
+assert {
+  res.status: eq 200
+}

@@ -1,0 +1,30 @@
+meta {
+  name: Login admin
+  type: http
+  seq: 3
+}
+
+post {
+  url: {{baseUrl}}/auth/login
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "email": "admin@mock.dev",
+    "password": "password123"
+  }
+}
+
+assert {
+  res.status: eq 201
+}
+
+script:post-response {
+  bru.setEnvVar("token", res.body.accessToken);
+}
+
+docs {
+  Admin can do everything, including DELETE and /users.
+}

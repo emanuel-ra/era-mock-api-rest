@@ -1,0 +1,4 @@
+# Keep LF line endings in the repo and in every checkout, including Windows,
+# so shell scripts (hooks, scripts/docker-smoke-test.sh) and the Docker build keep working.
+* text=auto eol=lf
+*.sh text eol=lf

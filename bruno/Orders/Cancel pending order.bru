@@ -1,0 +1,21 @@
+meta {
+  name: Cancel pending order
+  type: http
+  seq: 12
+}
+
+patch {
+  url: {{baseUrl}}/orders/{{bigOrderId}}/status
+  body: json
+  auth: inherit
+}
+
+body:json {
+  {
+    "status": "cancelled"
+  }
+}
+
+assert {
+  res.status: eq 200
+}

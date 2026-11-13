@@ -1,0 +1,22 @@
+meta {
+  name: Update category
+  type: http
+  seq: 5
+}
+
+patch {
+  url: {{baseUrl}}/categories/{{categoryId}}
+  body: json
+  auth: inherit
+}
+
+body:json {
+  {
+    "description": "Updated from Bruno",
+    "isActive": false
+  }
+}
+
+assert {
+  res.status: eq 200
+}

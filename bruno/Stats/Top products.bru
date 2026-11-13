@@ -1,0 +1,19 @@
+meta {
+  name: Top products
+  type: http
+  seq: 4
+}
+
+get {
+  url: {{baseUrl}}/stats/top-products?limit=10
+  body: none
+  auth: inherit
+}
+
+params:query {
+  limit: 10
+}
+
+assert {
+  res.status: eq 200
+}

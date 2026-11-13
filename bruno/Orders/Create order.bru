@@ -1,0 +1,36 @@
+meta {
+  name: Create order
+  type: http
+  seq: 3
+}
+
+post {
+  url: {{baseUrl}}/orders
+  body: json
+  auth: inherit
+}
+
+body:json {
+  {
+    "customerId": "{{seedCustomerId}}",
+    "items": [
+      {
+        "productId": "{{stockProductId}}",
+        "quantity": 1
+      }
+    ],
+    "notes": "Created from Bruno"
+  }
+}
+
+assert {
+  res.status: eq 201
+}
+
+script:post-response {
+  bru.setVar("orderId", res.body.id);
+}
+
+docs {
+  Uses `seedCustomerId` (Customers / List customers) and `stockProductId` (Products / List products with most stock).
+}

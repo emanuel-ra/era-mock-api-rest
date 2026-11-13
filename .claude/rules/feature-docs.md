@@ -12,4 +12,14 @@ Whenever you add, change or remove an endpoint or module (e.g. a new `categories
 
 If the change also affects architecture, seed data or the steps to add a resource, update the matching file in `docs/` too.
 
-Commit the docs update with the feature, or as a separate `docs:` commit in the same branch.
+## Keep the Bruno collection in sync
+
+`bruno/` is the manual testing collection (see "Manual testing (Bruno)" in `CLAUDE.md`). In the same branch:
+
+- New module: add a `bruno/<Module>/` folder with a `folder.bru` (`meta { name, seq }`, placed before `Mock simulation` and `Seed`) and its requests: list (with filter, pagination and `sortBy`/`order` examples), get, create, update, delete, plus any extra action.
+- New or changed endpoint: add or update its `.bru` file (route, body, query params, expected status in `assert`). Removed endpoint: delete its file.
+- Requests use `auth: inherit` (collection-level `Bearer {{token}}`) unless the route is public (`auth: none`). Create requests save the new id with `bru.setVar("<resource>Id", res.body.id)` for the get / update / delete requests; use `{{$timestamp}}` in unique fields (email, name, SKU) so the collection can run more than once.
+- Never commit tokens or other secrets: `token` stays a `vars:secret` in `environments/local.bru`.
+- If the server can run, check it with `cd bruno && npx @usebruno/cli run --env local`.
+
+Commit the docs and Bruno updates with the feature, or as separate `docs:` / `chore:` commits in the same branch.

@@ -1,0 +1,25 @@
+meta {
+  name: Invalid status change
+  type: http
+  seq: 8
+}
+
+patch {
+  url: {{baseUrl}}/orders/{{orderId}}/status
+  body: json
+  auth: inherit
+}
+
+body:json {
+  {
+    "status": "cancelled"
+  }
+}
+
+assert {
+  res.status: eq 409
+}
+
+docs {
+  `shipped → cancelled` is not allowed: 409.
+}

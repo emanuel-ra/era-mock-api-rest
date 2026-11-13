@@ -1,0 +1,23 @@
+meta {
+  name: List products filtered and sorted
+  type: http
+  seq: 2
+}
+
+get {
+  url: {{baseUrl}}/products?categoryId={{seedCategoryId}}&status=active&sortBy=price&order=desc
+  body: none
+  auth: inherit
+}
+
+params:query {
+  ~name: chair
+  categoryId: {{seedCategoryId}}
+  status: active
+  sortBy: price
+  order: desc
+}
+
+assert {
+  res.status: eq 200
+}
