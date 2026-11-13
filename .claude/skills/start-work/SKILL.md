@@ -58,7 +58,7 @@ npm test
 npm run test:e2e
 ```
 
-All four must pass. Add or update unit tests (`*.spec.ts` next to the changed file) for new or changed service, repository or guard logic. For new or changed endpoints, roles or validation, add or update e2e tests in `test/<module>.e2e-spec.ts`.
+All four must pass. Add or update unit tests (`*.spec.ts` next to the changed file) for new or changed service, repository or guard logic. For new or changed endpoints, roles or validation, add or update e2e tests in `test/<module>.e2e-spec.ts`. CI runs the same checks on the PR.
 
 ## 7. Document and commit
 

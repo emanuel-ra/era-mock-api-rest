@@ -31,7 +31,7 @@ npm run test:e2e    # e2e tests over HTTP (test/**/*.e2e-spec.ts)
 npx jest src/customers/customers.service.spec.ts   # single test file
 ```
 
-Unit tests use Jest + ts-jest and live next to the code as `*.spec.ts`. E2E tests live in `test/*.e2e-spec.ts` and use Supertest against the full `AppModule` (see `test/helpers.ts`). Validation is via `npm run lint`, `npm run type-check`, `npm test` and `npm run test:e2e`.
+Unit tests use Jest + ts-jest and live next to the code as `*.spec.ts`. E2E tests live in `test/*.e2e-spec.ts` and use Supertest against the full `AppModule` (see `test/helpers.ts`). Validation is via `npm run lint`, `npm run type-check`, `npm test` and `npm run test:e2e`; GitHub Actions (`.github/workflows/ci.yml`) runs all of them plus `npm run build` on every PR and push to `main`.
 
 ## High-level architecture
 
