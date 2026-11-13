@@ -34,6 +34,13 @@ docker run --rm -p 3000:3000 -e JWT_SECRET=change-me era-mock-api-rest
 
 The image is a two-stage build on `node:24-alpine`: it compiles TypeScript in the first stage and ships only production dependencies and `dist/`, running as the unprivileged `node` user. A healthcheck polls `GET /seed/status`, so `docker ps` shows the container as `healthy` once the API answers.
 
+To check an image the same way CI does:
+
+```bash
+docker build -t era-mock-api-rest:local .
+scripts/docker-smoke-test.sh era-mock-api-rest:local
+```
+
 ## Tests
 
 ```bash
@@ -41,4 +48,4 @@ npm test           # unit tests
 npm run test:e2e   # e2e tests over HTTP
 ```
 
-CI runs lint, type-check, both test suites and the build on every pull request.
+CI runs lint, type-check, both test suites and the build on every pull request, and builds and smoke-tests the Docker image.

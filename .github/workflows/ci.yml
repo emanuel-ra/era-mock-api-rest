@@ -44,3 +44,27 @@ jobs:
 
       - name: Build
         run: npm run build
+
+  docker:
+    name: Docker image
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: docker/setup-buildx-action@v4
+
+      # Builds the image without pushing it anywhere; layers are cached
+      # between runs so unchanged dependencies are not reinstalled.
+      - name: Build image
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          load: true
+          tags: era-mock-api-rest:ci
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Smoke test the container
+        run: scripts/docker-smoke-test.sh era-mock-api-rest:ci
