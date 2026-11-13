@@ -30,9 +30,17 @@ JWT is issued by `AuthService.login`. The strategy (`JwtStrategy`) extracts `{ i
 
 Roles enum: `admin`, `user`, `viewer` (defined in [src/core/decorators/roles.decorator.ts](../src/core/decorators/roles.decorator.ts)).
 
-## Pagination & filtering
+## Pagination, filtering & sorting
 
-`PaginationDto` (`page`, `limit`) and entity-specific `FilterXxxDto` are composed together on list endpoints. The `paginate()` helper ([src/core/dto/pagination.dto.ts](../src/core/dto/pagination.dto.ts)) slices the already-filtered array and returns `{ data, meta: { total, page, limit, totalPages } }`.
+`PaginationDto` (`page`, `limit`, `order`) and entity-specific `FilterXxxDto` are composed together on list endpoints. Each `FilterXxxDto` also declares `sortBy`, validated with `@IsIn` against its own whitelist (`XXX_SORT_FIELDS`, typed as keys of the entity), so a field that is not sortable returns `400`.
+
+Each service's `findAll` runs the same three steps:
+
+1. `repo.findAll(filters)` filters the store (insertion order).
+2. `sortItems(items, sortBy, order)` ([src/core/utils/sort.ts](../src/core/utils/sort.ts)) returns a sorted copy: strings with case-insensitive `localeCompare`, numbers and dates by value, empty values (`null`, `undefined`, `''`) last in both orders, ties in their original order. Without `sortBy` it returns the items unchanged.
+3. `paginate()` ([src/core/dto/pagination.dto.ts](../src/core/dto/pagination.dto.ts)) slices the array and returns `{ data, meta: { total, page, limit, totalPages } }`.
+
+Sorting lives in the service, not in `InMemoryRepository`, so the repository stays a plain store and sorting stays next to pagination, which it must run before.
 
 ## Swagger
 
