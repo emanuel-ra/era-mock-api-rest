@@ -34,7 +34,7 @@ docker compose up --build   # run the API in Docker
 npx jest src/customers/customers.service.spec.ts   # single test file
 ```
 
-Unit tests use Jest + ts-jest and live next to the code as `*.spec.ts`. E2E tests live in `test/*.e2e-spec.ts` and use Supertest against the full `AppModule` (see `test/helpers.ts`). Validation is via `npm run lint`, `npm run type-check`, `npm test` and `npm run test:e2e`; GitHub Actions (`.github/workflows/ci.yml`) runs all of them plus `npm run build` on every PR and push to `main`, and a separate job builds the Docker image and runs `scripts/docker-smoke-test.sh`.
+Unit tests use Jest + ts-jest and live next to the code as `*.spec.ts`. E2E tests live in `test/*.e2e-spec.ts` and use Supertest against the full `AppModule` (see `test/helpers.ts`). Validation is via `npm run lint`, `npm run type-check`, `npm test` and `npm run test:e2e`; GitHub Actions (`.github/workflows/ci.yml`) runs all of them plus `npm run build` on every PR and push to `main` or `dev`, and a separate job builds the Docker image and runs `scripts/docker-smoke-test.sh`.
 
 ## High-level architecture
 
@@ -81,7 +81,7 @@ Unit tests use Jest + ts-jest and live next to the code as `*.spec.ts`. E2E test
 
 Follow the repo’s existing AI workflow conventions in `.claude/rules/`:
 
-- Never change code or commit on `main`.
+- Never change code or commit on `main` or `dev`. Work branches start from `dev` and go back to `dev` through a PR; `main` only receives release PRs from `dev`.
 - Use branch names like `feat/<short-description>` or `fix/<issue-number>-<short-description>`.
 - Use Conventional Commits (`feat`, `fix`, `docs`, `refactor`, etc.).
 
