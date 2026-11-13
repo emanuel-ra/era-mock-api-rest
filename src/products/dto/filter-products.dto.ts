@@ -1,7 +1,14 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
-import { IsEnum, IsOptional, IsString, IsUUID } from 'class-validator';
+import { IsEnum, IsIn, IsOptional, IsString, IsUUID } from 'class-validator';
 import { PaginationDto } from '../../core/dto/pagination.dto';
-import { ProductStatus } from '../entities/product.entity';
+import { ProductEntity, ProductStatus } from '../entities/product.entity';
+
+export const PRODUCT_SORT_FIELDS = [
+  'name',
+  'price',
+  'stock',
+  'createdAt',
+] as const satisfies ReadonlyArray<keyof ProductEntity>;
 
 export class FilterProductsDto extends PaginationDto {
   @ApiPropertyOptional()
@@ -18,4 +25,12 @@ export class FilterProductsDto extends PaginationDto {
   @IsOptional()
   @IsEnum(ProductStatus)
   status?: ProductStatus;
+
+  @ApiPropertyOptional({
+    enum: PRODUCT_SORT_FIELDS,
+    description: 'Field to sort by. Without it the default order is kept.',
+  })
+  @IsOptional()
+  @IsIn(PRODUCT_SORT_FIELDS)
+  sortBy?: (typeof PRODUCT_SORT_FIELDS)[number];
 }

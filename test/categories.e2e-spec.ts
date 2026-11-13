@@ -1,6 +1,6 @@
 import { INestApplication } from '@nestjs/common';
 import request from 'supertest';
-import { createApp, loginAll, SeededRole } from './helpers';
+import { compareBy, createApp, expectSorted, loginAll, SeededRole } from './helpers';
 
 describe('Categories (e2e)', () => {
   let app: INestApplication;
@@ -144,6 +144,49 @@ describe('Categories (e2e)', () => {
 
       await http().delete(`/categories/${category.id}`).set(auth('admin')).expect(204);
       await http().get(`/categories/${category.id}`).set(auth('admin')).expect(404);
+    });
+  });
+
+  describe('GET /categories sorting', () => {
+    const list = async (query: string) => {
+      const res = await http().get(`/categories?limit=100&${query}`).set(auth('viewer')).expect(200);
+      expect(res.body.data.length).toBe(res.body.meta.total);
+      return res.body.data as Array<{ name: string; createdAt: string }>;
+    };
+
+    it('sorts by name ascending', async () => {
+      const data = await list('sortBy=name&order=asc');
+      expectSorted(
+        data.map((c) => c.name),
+        'asc',
+        compareBy.text,
+      );
+    });
+
+    it('sorts by name descending', async () => {
+      const data = await list('sortBy=name&order=desc');
+      expectSorted(
+        data.map((c) => c.name),
+        'desc',
+        compareBy.text,
+      );
+    });
+
+    it('sorts by createdAt ascending', async () => {
+      const data = await list('sortBy=createdAt');
+      expectSorted(
+        data.map((c) => c.createdAt),
+        'asc',
+        compareBy.date,
+      );
+    });
+
+    it.each(['slug', 'isActive', 'unknown'])('returns 400 for sortBy=%s', (field) => {
+      return http().get(`/categories?sortBy=${field}`).set(auth('viewer')).expect(400);
+    });
+
+    it('returns 400 for an invalid order', () => {
+      return http().get('/categories?sortBy=name&order=random').set(auth('viewer')).expect(400);
     });
   });
 });
