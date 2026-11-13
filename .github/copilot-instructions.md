@@ -10,6 +10,7 @@ The app is assembled in `src/app.module.ts` with these modules:
 - `CategoriesModule`: category CRUD (products reference categories by `categoryId`)
 - `CustomersModule`: customer CRUD
 - `ProductsModule`: product CRUD
+- `OrdersModule`: order CRUD plus status changes (orders reference a customer and products)
 - `SeedModule`: reset/status endpoints and bootstrap seeding
 
 The service is designed for frontend testing, not long-lived production data.

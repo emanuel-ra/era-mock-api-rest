@@ -34,7 +34,7 @@ Fields: `name` (required, min 2), `email` (required, unique), `phone`, `address`
 | GET | `/customers/:id` | JWT (any role) | Get one customer. |
 | POST | `/customers` | admin, user | Create a customer. `409` if the email already exists. |
 | PATCH | `/customers/:id` | admin, user | Partial update. `409` if the new email belongs to another customer. |
-| DELETE | `/customers/:id` | admin | Delete a customer. Returns `204`. |
+| DELETE | `/customers/:id` | admin | Delete a customer. Returns `204`, or `409` if the customer has orders. |
 
 ## Categories
 
@@ -64,6 +64,21 @@ Fields: `name` (required, min 2), `price` (required, positive, max 2 decimals), 
 | PATCH | `/products/:id` | admin, user | Partial update. `409` if the new SKU belongs to another product; `400` if `categoryId` does not exist. Send `categoryId: null` to remove the category. |
 | DELETE | `/products/:id` | admin | Delete a product. Returns `204`. |
 
+## Orders
+
+Customer orders with one or more product lines. Creating or editing an order does not change product stock.
+
+Fields: `customerId` (required, uuid of an existing customer), `items` (required, at least one; each is `{ productId, quantity }` with an existing product, quantity int ≥ 1, and no product repeated), `notes`. Set by the server: `status` (`pending` | `paid` | `shipped` | `delivered` | `cancelled`, starts as `pending`), `total`, and per item `productName`, `unitPrice` and `subtotal`. The product name and price are copied when the items are saved, so later product changes or deletes do not affect the order.
+
+| Method | Route | Access | Description |
+|--------|-------|--------|-------------|
+| GET | `/orders` | JWT (any role) | Paginated list. Filters: `customerId` (exact uuid), `status` (enum). |
+| GET | `/orders/:id` | JWT (any role) | Get one order. |
+| POST | `/orders` | admin, user | Create a `pending` order. `400` if the customer or a product does not exist. |
+| PATCH | `/orders/:id` | admin, user | Partial update of `customerId`, `items` (replaces the whole list, with current product prices) or `notes`; the total is recalculated. `409` if the order is not `pending`; `400` if the customer or a product does not exist. |
+| PATCH | `/orders/:id/status` | admin, user | Change the status. Allowed: `pending → paid`, `paid → shipped`, `shipped → delivered`, and `pending`/`paid → cancelled`. Any other change returns `409`. |
+| DELETE | `/orders/:id` | admin | Delete an order. Returns `204`. |
+
 ## Seed
 
 Manage the in-memory mock data. Data is seeded automatically on boot (see [seed-data.md](seed-data.md)).
@@ -71,4 +86,4 @@ Manage the in-memory mock data. Data is seeded automatically on boot (see [seed-
 | Method | Route | Access | Description |
 |--------|-------|--------|-------------|
 | POST | `/seed/reset` | Public | Clears all stores and re-seeds them with fresh Faker data. Returns a message plus the record counts. |
-| GET | `/seed/status` | Public | Returns the record count per module: `{ users, categories, customers, products }`. |
+| GET | `/seed/status` | Public | Returns the record count per module: `{ users, categories, customers, products, orders }`. |
