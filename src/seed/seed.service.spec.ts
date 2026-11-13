@@ -5,6 +5,7 @@ import { CategoriesRepository } from '../categories/categories.repository';
 import { Role } from '../core/decorators/roles.decorator';
 import { CustomersRepository } from '../customers/customers.repository';
 import { OrdersRepository } from '../orders/orders.repository';
+import { ProductStatus } from '../products/entities/product.entity';
 import { ProductsRepository } from '../products/products.repository';
 import { SeedService } from './seed.service';
 
@@ -75,6 +76,20 @@ describe('SeedService', () => {
       const sum = order.items.reduce((total, item) => total + item.subtotal, 0);
       expect(order.total).toBeCloseTo(sum, 2);
     }
+  });
+
+  it('keeps product stock coherent with status after the sold orders take theirs', () => {
+    for (const product of productsRepo.findAll()) {
+      expect(product.stock).toBeGreaterThanOrEqual(0);
+      if (product.status === ProductStatus.Active) expect(product.stock).toBeGreaterThan(0);
+      if (product.status === ProductStatus.OutOfStock) expect(product.stock).toBe(0);
+    }
+  });
+
+  it('creates orders oldest first, so stock is taken in the order the sales happened', () => {
+    const times = ordersRepo.findAll().map((o) => o.createdAt.getTime());
+
+    expect(times).toEqual([...times].sort((a, b) => a - b));
   });
 
   it('spreads order creation dates over the last 90 days', () => {

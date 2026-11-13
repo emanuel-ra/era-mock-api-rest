@@ -87,7 +87,7 @@ Fields: `name` (required, min 2), `price` (required, positive, max 2 decimals), 
 
 ## Orders
 
-Customer orders with one or more product lines. Creating or editing an order does not change product stock.
+Customer orders with one or more product lines. Creating or editing an order does not change product stock; paying and cancelling a paid order do (see *Stock* below).
 
 Fields: `customerId` (required, uuid of an existing customer), `items` (required, at least one; each is `{ productId, quantity }` with an existing product, quantity int ≥ 1, and no product repeated), `notes`. Set by the server: `status` (`pending` | `paid` | `shipped` | `delivered` | `cancelled`, starts as `pending`), `total`, and per item `productName`, `unitPrice` and `subtotal`. The product name and price are copied when the items are saved, so later product changes or deletes do not affect the order.
 
@@ -97,8 +97,15 @@ Fields: `customerId` (required, uuid of an existing customer), `items` (required
 | GET | `/orders/:id` | JWT (any role) | Get one order. |
 | POST | `/orders` | admin, user | Create a `pending` order. `400` if the customer or a product does not exist. |
 | PATCH | `/orders/:id` | admin, user | Partial update of `customerId`, `items` (replaces the whole list, with current product prices) or `notes`; the total is recalculated. `409` if the order is not `pending`; `400` if the customer or a product does not exist. |
-| PATCH | `/orders/:id/status` | admin, user | Change the status. Allowed: `pending → paid`, `paid → shipped`, `shipped → delivered`, and `pending`/`paid → cancelled`. Any other change returns `409`. |
+| PATCH | `/orders/:id/status` | admin, user | Change the status. Allowed: `pending → paid`, `paid → shipped`, `shipped → delivered`, and `pending`/`paid → cancelled`. Any other change returns `409`. Paying takes stock and cancelling a paid order returns it (see below); `409` if stock is short. |
 | DELETE | `/orders/:id` | admin | Delete an order. Returns `204`. |
+
+Stock:
+
+- `pending → paid` takes each item's `quantity` out of its product's `stock`. If any product has less stock than its line asks for, it answers `409` and changes nothing (neither the order nor any product). The body lists what is missing: `{ statusCode: 409, error: 'Conflict', message: 'Insufficient stock for: <names>', missing: [{ productId, productName, requested, available }] }`.
+- `paid → cancelled` puts the quantities back. Cancelling a `pending` order and moving to `shipped` or `delivered` do not touch stock.
+- Product status follows the stock: an `active` product that reaches 0 becomes `out_of_stock`, and an `out_of_stock` product that gets stock back (from a cancellation) becomes `active` again. `inactive` products keep their status.
+- Products deleted after the order was created are skipped, both when paying and when cancelling.
 
 ## Stats
 
