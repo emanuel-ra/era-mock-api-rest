@@ -25,7 +25,19 @@ E2E tests live in `test/` and use Supertest against the full `AppModule`, booted
 
 CI (`.github/workflows/ci.yml`, GitHub Actions, Node 24) runs lint, type-check, unit tests, e2e tests and build on every pull request and push to `main` or `dev` (job "Lint, type-check, tests and build"). A second job, "Docker image", builds the image with layer caching and runs `scripts/docker-smoke-test.sh` against it (healthy status, `/seed/status`, Swagger, login, 401 without token, runs as `node`, no `.env` or `src/` in the image). It runs without a `.env` file, so the app must keep working with the config fallbacks.
 
-Docker: `Dockerfile` is a two-stage build on `node:24-alpine` (build with dev deps → runtime with `npm ci --omit=dev` + `dist/`, user `node`, healthcheck on `GET /seed/status`). `compose.yaml` maps `${PORT:-3000}` to the container's port 3000 and passes `JWT_SECRET`/`JWT_EXPIRES_IN` from `.env` or defaults. `.dockerignore` keeps `.env`, tests and docs out of the build context. If a new runtime file is needed (e.g. assets), copy it in the Dockerfile runtime stage.
+Docker: `Dockerfile` is a two-stage build on `node:24-alpine` (build with dev deps → runtime with `npm ci --omit=dev` + `dist/`, user `node`, healthcheck on `GET /seed/status`). `compose.yaml` maps `${PORT:-3000}` to the container's port 3000 and passes `JWT_SECRET`/`JWT_EXPIRES_IN` from `.env` or defaults. `.dockerignore` keeps `.env`, tests, docs and `bruno/` out of the build context. If a new runtime file is needed (e.g. assets), copy it in the Dockerfile runtime stage.
+
+`.gitattributes` forces LF line endings (`* text=auto eol=lf`, `*.sh` explicitly), so a Windows clone keeps the hooks in `.claude/hooks/` and `scripts/docker-smoke-test.sh` runnable.
+
+## Manual testing (Bruno)
+
+`bruno/` holds the [Bruno](https://www.usebruno.com/) collection "era-mock-api", with one folder per module plus `Auth`, `Mock simulation` and `Seed`.
+
+- Open it in Bruno with **Open Collection** → the `bruno/` folder, and select the `local` environment (`baseUrl = http://localhost:3000`).
+- Run one of `Auth/Login admin|user|viewer` (password `password123`). Its post-response script saves the JWT with `bru.setEnvVar("token", ...)`, and the collection sends `Authorization: Bearer {{token}}` on every request. `token` is a secret variable, so it is never written to the committed files.
+- Create requests save the new id in a runtime variable (`customerId`, `productId`, `orderId`, …) that the get / update / delete requests of the same folder reuse. Running the whole collection in order works (it ends logged in as admin); `Seed/Reset` restores the data.
+- From the terminal, with the server running: `cd bruno && npx @usebruno/cli run --env local` (add `--env-var baseUrl=http://localhost:3001` for another port). The CLI is not a project dependency.
+- To run the server on another port, set `PORT` in `.env`, or for one run: `PORT=3001 npm run start:dev` (macOS/Linux) or `$env:PORT=3001; npm run start:dev` (Windows PowerShell). Then change `baseUrl` in the environment to match.
 
 ## Overview
 
