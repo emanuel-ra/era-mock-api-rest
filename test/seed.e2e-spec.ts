@@ -18,7 +18,7 @@ describe('Seed (e2e)', () => {
   it('GET /seed/status is public and returns the counts', async () => {
     const res = await http().get('/seed/status').expect(200);
 
-    expect(res.body).toEqual({ users: 3, customers: 30, products: 30 });
+    expect(res.body).toEqual({ users: 3, categories: 7, customers: 30, products: 30 });
   });
 
   it('POST /seed/reset discards changes and keeps issued tokens valid', async () => {
@@ -35,6 +35,7 @@ describe('Seed (e2e)', () => {
     expect(res.body).toEqual({
       message: 'Data re-seeded successfully',
       users: 3,
+      categories: 7,
       customers: 30,
       products: 30,
     });

@@ -1,6 +1,7 @@
 import { Test } from '@nestjs/testing';
 import * as bcrypt from 'bcryptjs';
 import { UsersRepository } from '../auth/repositories/users.repository';
+import { CategoriesRepository } from '../categories/categories.repository';
 import { Role } from '../core/decorators/roles.decorator';
 import { CustomersRepository } from '../customers/customers.repository';
 import { ProductsRepository } from '../products/products.repository';
@@ -13,7 +14,13 @@ describe('SeedService', () => {
 
   beforeEach(async () => {
     const moduleRef = await Test.createTestingModule({
-      providers: [SeedService, UsersRepository, CustomersRepository, ProductsRepository],
+      providers: [
+        SeedService,
+        UsersRepository,
+        CategoriesRepository,
+        CustomersRepository,
+        ProductsRepository,
+      ],
     }).compile();
 
     service = moduleRef.get(SeedService);
@@ -24,8 +31,8 @@ describe('SeedService', () => {
     await service.onModuleInit();
   });
 
-  it('seeds 3 users, 30 customers and 30 products on boot', () => {
-    expect(service.status()).toEqual({ users: 3, customers: 30, products: 30 });
+  it('seeds 3 users, 7 categories, 30 customers and 30 products on boot', () => {
+    expect(service.status()).toEqual({ users: 3, categories: 7, customers: 30, products: 30 });
   });
 
   it('seeds the default users with fixed ids and the shared password', async () => {
@@ -52,7 +59,7 @@ describe('SeedService', () => {
 
     await service.reset();
 
-    expect(service.status()).toEqual({ users: 3, customers: 30, products: 30 });
+    expect(service.status()).toEqual({ users: 3, categories: 7, customers: 30, products: 30 });
     expect(customersRepo.findByEmail('extra@example.com')).toBeUndefined();
     expect(usersRepo.findById('00000000-0000-4000-8000-000000000001')).toBeDefined();
   });
