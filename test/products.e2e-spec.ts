@@ -1,6 +1,6 @@
 import { INestApplication } from '@nestjs/common';
 import request from 'supertest';
-import { createApp, loginAll, SeededRole } from './helpers';
+import { compareBy, createApp, expectSorted, loginAll, SeededRole } from './helpers';
 
 describe('Products (e2e)', () => {
   let app: INestApplication;
@@ -207,6 +207,57 @@ describe('Products (e2e)', () => {
 
       await http().delete(`/products/${product.id}`).set(auth('admin')).expect(204);
       await http().get(`/products/${product.id}`).set(auth('admin')).expect(404);
+    });
+  });
+
+  describe('GET /products sorting', () => {
+    const list = async (query: string) => {
+      const res = await http().get(`/products?limit=100&${query}`).set(auth('viewer')).expect(200);
+      expect(res.body.data.length).toBe(res.body.meta.total);
+      return res.body.data as Array<{ id: string; name: string; price: number; stock: number }>;
+    };
+
+    it('sorts by price ascending by default', async () => {
+      const data = await list('sortBy=price');
+      expectSorted(
+        data.map((p) => p.price),
+        'asc',
+        compareBy.number,
+      );
+    });
+
+    it('sorts by stock descending', async () => {
+      const data = await list('sortBy=stock&order=desc');
+      expectSorted(
+        data.map((p) => p.stock),
+        'desc',
+        compareBy.number,
+      );
+    });
+
+    it('sorts by name ignoring case', async () => {
+      await createProduct({ name: 'aaa lowercase first' });
+      const data = await list('sortBy=name&order=asc');
+      expectSorted(
+        data.map((p) => p.name),
+        'asc',
+        compareBy.text,
+      );
+      expect(data[0].name).toBe('aaa lowercase first');
+    });
+
+    it('keeps the default order without sortBy, even with order', async () => {
+      const unsorted = await list('');
+      const withOrder = await list('order=desc');
+      expect(withOrder.map((p) => p.id)).toEqual(unsorted.map((p) => p.id));
+    });
+
+    it.each(['sku', 'description', 'unknown'])('returns 400 for sortBy=%s', (field) => {
+      return http().get(`/products?sortBy=${field}`).set(auth('viewer')).expect(400);
+    });
+
+    it('returns 400 for an invalid order', () => {
+      return http().get('/products?sortBy=name&order=up').set(auth('viewer')).expect(400);
     });
   });
 });

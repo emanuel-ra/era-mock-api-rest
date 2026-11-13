@@ -1,6 +1,6 @@
 import { INestApplication } from '@nestjs/common';
 import request from 'supertest';
-import { createApp, loginAll, SeededRole } from './helpers';
+import { compareBy, createApp, expectSorted, loginAll, SeededRole } from './helpers';
 
 const UNKNOWN_ID = '11111111-1111-4111-8111-111111111111';
 
@@ -250,6 +250,56 @@ describe('Orders (e2e)', () => {
 
       await http().delete(`/orders/${order.id}`).set(auth('admin')).expect(204);
       await http().get(`/orders/${order.id}`).set(auth('admin')).expect(404);
+    });
+  });
+
+  describe('GET /orders sorting', () => {
+    const list = async (query: string) => {
+      const res = await http().get(`/orders?limit=100&${query}`).set(auth('viewer')).expect(200);
+      expect(res.body.data.length).toBe(res.body.meta.total);
+      return res.body.data as Array<{ total: number; status: string; createdAt: string }>;
+    };
+
+    it('sorts by total ascending', async () => {
+      const data = await list('sortBy=total');
+      expectSorted(
+        data.map((o) => o.total),
+        'asc',
+        compareBy.number,
+      );
+    });
+
+    it('sorts by total descending', async () => {
+      const data = await list('sortBy=total&order=desc');
+      expectSorted(
+        data.map((o) => o.total),
+        'desc',
+        compareBy.number,
+      );
+    });
+
+    it('sorts by status and createdAt', async () => {
+      const byStatus = await list('sortBy=status&order=desc');
+      expectSorted(
+        byStatus.map((o) => o.status),
+        'desc',
+        compareBy.text,
+      );
+
+      const byDate = await list('sortBy=createdAt&order=asc');
+      expectSorted(
+        byDate.map((o) => o.createdAt),
+        'asc',
+        compareBy.date,
+      );
+    });
+
+    it.each(['customerId', 'notes', 'unknown'])('returns 400 for sortBy=%s', (field) => {
+      return http().get(`/orders?sortBy=${field}`).set(auth('viewer')).expect(400);
+    });
+
+    it('returns 400 for an invalid order', () => {
+      return http().get('/orders?sortBy=total&order=1').set(auth('viewer')).expect(400);
     });
   });
 });

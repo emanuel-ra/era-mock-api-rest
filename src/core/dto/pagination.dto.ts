@@ -1,6 +1,7 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
-import { IsInt, IsOptional, Max, Min } from 'class-validator';
+import { IsEnum, IsInt, IsOptional, Max, Min } from 'class-validator';
+import { SortOrder } from '../utils/sort';
 
 export class PaginationDto {
   @ApiPropertyOptional({ default: 1, minimum: 1 })
@@ -17,6 +18,15 @@ export class PaginationDto {
   @Min(1)
   @Max(100)
   limit: number = 10;
+
+  @ApiPropertyOptional({
+    enum: SortOrder,
+    default: SortOrder.Asc,
+    description: 'Sort direction. Only used together with `sortBy`.',
+  })
+  @IsOptional()
+  @IsEnum(SortOrder)
+  order?: SortOrder = SortOrder.Asc;
 }
 
 export interface PaginatedResult<T> {

@@ -7,6 +7,7 @@ Conventions shared by all modules:
 - **Auth:** "JWT" means the endpoint needs an `Authorization: Bearer <token>` header from `POST /auth/login`. Roles are `admin`, `user` and `viewer`.
 - **Validation:** request bodies and query params are validated globally (`whitelist` + `forbidNonWhitelisted`), so unknown fields are rejected with `400`.
 - **List endpoints:** accept `page` (default 1) and `limit` (default 10, max 100) and return `{ data, meta: { total, page, limit, totalPages } }`.
+- **Sorting:** list endpoints accept `sortBy` (one of the module's sortable fields, listed in each section) and `order` (`asc` | `desc`, default `asc`). Strings sort case-insensitively, numbers and dates by value; records with no value (empty, `null`) go last in both orders. Without `sortBy` the default order (insertion order) is kept and `order` has no effect. An unknown `sortBy` or `order` returns `400`.
 - **Text filters:** fields marked *substring* match partially (case-insensitive). Other string filters must match exactly (case-insensitive).
 - **Errors:** unknown ids return `404`, duplicates on unique fields return `409`.
 - **Swagger:** interactive docs at `/api/docs`.
@@ -30,7 +31,7 @@ Fields: `name` (required, min 2), `email` (required, unique), `phone`, `address`
 
 | Method | Route | Access | Description |
 |--------|-------|--------|-------------|
-| GET | `/customers` | JWT (any role) | Paginated list. Filters: `name` (substring), `city` (substring), `country` (exact), `isActive` (boolean). |
+| GET | `/customers` | JWT (any role) | Paginated list. Filters: `name` (substring), `city` (substring), `country` (exact), `isActive` (boolean). Sortable by `name`, `email`, `city`, `createdAt`. |
 | GET | `/customers/:id` | JWT (any role) | Get one customer. |
 | POST | `/customers` | admin, user | Create a customer. `409` if the email already exists. |
 | PATCH | `/customers/:id` | admin, user | Partial update. `409` if the new email belongs to another customer. |
@@ -44,7 +45,7 @@ Fields: `name` (required, min 2, unique case-insensitive), `slug` (unique; lower
 
 | Method | Route | Access | Description |
 |--------|-------|--------|-------------|
-| GET | `/categories` | JWT (any role) | Paginated list. Filters: `name` (substring), `isActive` (boolean). |
+| GET | `/categories` | JWT (any role) | Paginated list. Filters: `name` (substring), `isActive` (boolean). Sortable by `name`, `createdAt`. |
 | GET | `/categories/:id` | JWT (any role) | Get one category. |
 | POST | `/categories` | admin, user | Create a category. `409` if the name or slug already exists; `400` if no slug can be generated from the name. |
 | PATCH | `/categories/:id` | admin, user | Partial update. `409` if the new name or slug belongs to another category. |
@@ -58,7 +59,7 @@ Fields: `name` (required, min 2), `price` (required, positive, max 2 decimals), 
 
 | Method | Route | Access | Description |
 |--------|-------|--------|-------------|
-| GET | `/products` | JWT (any role) | Paginated list. Filters: `name` (substring), `categoryId` (exact uuid), `status` (enum). |
+| GET | `/products` | JWT (any role) | Paginated list. Filters: `name` (substring), `categoryId` (exact uuid), `status` (enum). Sortable by `name`, `price`, `stock`, `createdAt`. |
 | GET | `/products/:id` | JWT (any role) | Get one product. |
 | POST | `/products` | admin, user | Create a product. `409` if the SKU already exists; `400` if `categoryId` does not exist. |
 | PATCH | `/products/:id` | admin, user | Partial update. `409` if the new SKU belongs to another product; `400` if `categoryId` does not exist. Send `categoryId: null` to remove the category. |
@@ -72,7 +73,7 @@ Fields: `customerId` (required, uuid of an existing customer), `items` (required
 
 | Method | Route | Access | Description |
 |--------|-------|--------|-------------|
-| GET | `/orders` | JWT (any role) | Paginated list. Filters: `customerId` (exact uuid), `status` (enum). |
+| GET | `/orders` | JWT (any role) | Paginated list. Filters: `customerId` (exact uuid), `status` (enum). Sortable by `total`, `status` (alphabetical), `createdAt`. |
 | GET | `/orders/:id` | JWT (any role) | Get one order. |
 | POST | `/orders` | admin, user | Create a `pending` order. `400` if the customer or a product does not exist. |
 | PATCH | `/orders/:id` | admin, user | Partial update of `customerId`, `items` (replaces the whole list, with current product prices) or `notes`; the total is recalculated. `409` if the order is not `pending`; `400` if the customer or a product does not exist. |
