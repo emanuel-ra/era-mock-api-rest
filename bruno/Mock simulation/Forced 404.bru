@@ -1,0 +1,19 @@
+meta {
+  name: Forced 404
+  type: http
+  seq: 3
+}
+
+get {
+  url: {{baseUrl}}/products/{{stockProductId}}
+  body: none
+  auth: inherit
+}
+
+headers {
+  x-mock-status: 404
+}
+
+assert {
+  res.status: eq 404
+}

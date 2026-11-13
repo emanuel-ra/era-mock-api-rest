@@ -24,3 +24,6 @@ Dockerfile
 .dockerignore
 compose.yaml
 .DS_Store
+
+# Manual testing collection (Bruno)
+bruno

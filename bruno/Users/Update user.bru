@@ -1,0 +1,26 @@
+meta {
+  name: Update user
+  type: http
+  seq: 5
+}
+
+patch {
+  url: {{baseUrl}}/users/{{userId}}
+  body: json
+  auth: inherit
+}
+
+body:json {
+  {
+    "name": "Bruno Viewer",
+    "role": "viewer"
+  }
+}
+
+assert {
+  res.status: eq 200
+}
+
+docs {
+  A new `password` is hashed again.
+}

@@ -1,0 +1,24 @@
+meta {
+  name: List users
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{baseUrl}}/users?page=1&limit=10
+  body: none
+  auth: inherit
+}
+
+params:query {
+  page: 1
+  limit: 10
+}
+
+assert {
+  res.status: eq 200
+}
+
+docs {
+  Admin only: log in with `Auth / Login admin` first.
+}

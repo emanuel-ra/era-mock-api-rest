@@ -1,0 +1,30 @@
+meta {
+  name: Create customer
+  type: http
+  seq: 3
+}
+
+post {
+  url: {{baseUrl}}/customers
+  body: json
+  auth: inherit
+}
+
+body:json {
+  {
+    "name": "Bruno Tester",
+    "email": "bruno-{{$timestamp}}@example.com",
+    "phone": "+52 55 1234 5678",
+    "city": "Guadalajara",
+    "country": "Mexico",
+    "company": "Bruno Inc."
+  }
+}
+
+assert {
+  res.status: eq 201
+}
+
+script:post-response {
+  bru.setVar("customerId", res.body.id);
+}

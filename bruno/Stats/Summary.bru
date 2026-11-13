@@ -1,0 +1,15 @@
+meta {
+  name: Summary
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{baseUrl}}/stats/summary
+  body: none
+  auth: inherit
+}
+
+assert {
+  res.status: eq 200
+}

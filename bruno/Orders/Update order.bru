@@ -1,0 +1,31 @@
+meta {
+  name: Update order
+  type: http
+  seq: 5
+}
+
+patch {
+  url: {{baseUrl}}/orders/{{orderId}}
+  body: json
+  auth: inherit
+}
+
+body:json {
+  {
+    "items": [
+      {
+        "productId": "{{stockProductId}}",
+        "quantity": 2
+      }
+    ],
+    "notes": "Leave at the front desk"
+  }
+}
+
+assert {
+  res.status: eq 200
+}
+
+docs {
+  Only while the order is `pending`. `items` replaces the whole list.
+}

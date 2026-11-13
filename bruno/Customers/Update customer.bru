@@ -1,0 +1,22 @@
+meta {
+  name: Update customer
+  type: http
+  seq: 5
+}
+
+patch {
+  url: {{baseUrl}}/customers/{{customerId}}
+  body: json
+  auth: inherit
+}
+
+body:json {
+  {
+    "city": "Monterrey",
+    "isActive": false
+  }
+}
+
+assert {
+  res.status: eq 200
+}
