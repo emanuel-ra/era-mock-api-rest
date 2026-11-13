@@ -91,6 +91,28 @@ describe('AllExceptionsFilter', () => {
     });
   });
 
+  it('keeps extra fields of the exception body without letting them override the format', () => {
+    const missing = [{ productId: 'p1', productName: 'Lamp', requested: 4, available: 1 }];
+    const exception = new ConflictException({
+      statusCode: 409,
+      error: 'Conflict',
+      message: 'Insufficient stock for: Lamp',
+      missing,
+      path: '/spoofed',
+      requestId: 'spoofed',
+    });
+    const { body } = run(exception, { 'x-request-id': 'abc-123' });
+
+    expect(body).toMatchObject({
+      statusCode: 409,
+      error: 'Conflict',
+      message: 'Insufficient stock for: Lamp',
+      missing,
+      path: '/customers?page=2',
+      requestId: 'abc-123',
+    });
+  });
+
   it('keeps a custom error field', () => {
     const exception = new HttpException(
       HttpException.createBody('Simulated error', 'Custom Error', 503),

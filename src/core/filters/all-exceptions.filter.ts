@@ -28,6 +28,26 @@ function reasonPhrase(status: number): string {
   return STATUS_CODES[status] ?? 'Error';
 }
 
+/** Fields of the error format that an exception's own body can never override. */
+const RESERVED_FIELDS: ReadonlySet<string> = new Set<keyof ErrorResponseBody>([
+  'statusCode',
+  'error',
+  'message',
+  'path',
+  'timestamp',
+  'requestId',
+]);
+
+/**
+ * Extra fields an HttpException put in its body (e.g. `missing` on the
+ * insufficient-stock 409), so domain errors can carry details for the client.
+ */
+function extraFields(exception: HttpException): Record<string, unknown> {
+  const response = exception.getResponse();
+  if (typeof response !== 'object' || response === null) return {};
+  return Object.fromEntries(Object.entries(response).filter(([key]) => !RESERVED_FIELDS.has(key)));
+}
+
 /** Reads `error` and `message` from an HttpException's response, whatever its shape. */
 function describeHttpException(
   exception: HttpException,
@@ -68,10 +88,12 @@ export class AllExceptionsFilter implements ExceptionFilter {
 
     let statusCode: number;
     let details: Pick<ErrorResponseBody, 'error' | 'message'>;
+    let extras: Record<string, unknown> = {};
 
     if (exception instanceof HttpException) {
       statusCode = exception.getStatus();
       details = describeHttpException(exception, statusCode);
+      extras = extraFields(exception);
     } else {
       statusCode = HttpStatus.INTERNAL_SERVER_ERROR;
       details = { error: reasonPhrase(statusCode), message: 'Internal server error' };
@@ -81,7 +103,8 @@ export class AllExceptionsFilter implements ExceptionFilter {
       );
     }
 
-    const body: ErrorResponseBody = {
+    const body: ErrorResponseBody & Record<string, unknown> = {
+      ...extras,
       statusCode,
       ...details,
       path: req.originalUrl ?? req.url,

@@ -24,6 +24,7 @@ Conventions shared by all modules:
 
   - `error` is the status reason phrase; `path` is the requested URL with its query string; `timestamp` is ISO 8601 (UTC).
   - `message` is a string, except validation errors (`400` from the body or query validation), which keep the array of messages, one per failed rule.
+  - Some errors add their own fields next to these, e.g. `missing` on the insufficient-stock `409` of `PATCH /orders/:id/status`. Those extra fields never replace the six above.
   - Unexpected errors answer `500` with `message: "Internal server error"`; details are only logged on the server.
 - **Request id:** every response, success or error, carries an `x-request-id` header, and error bodies repeat it as `requestId`. Send your own `x-request-id` (1–128 letters, digits or `._:-`) to have it echoed back; otherwise, or if it is not valid, the server generates a uuid v4.
 - **Swagger:** interactive docs at `/api/docs`. The mock headers below are listed on every endpoint.
