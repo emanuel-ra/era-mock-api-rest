@@ -33,9 +33,13 @@ git log --oneline origin/dev..HEAD
 - Uncommitted changes: stop and ask the user whether to discard them or keep the worktree.
 - Commits not in `origin/dev` after a `git fetch origin`: they were made after the merge. Stop and ask whether they belong in a new PR.
 
-## 4. Leave the worktree
+## 4. Get to the main checkout
 
-If the session is inside the worktree, leave it first with the `ExitWorktree` tool (`action: "keep"`), so the session is back in the main checkout. All later commands run from the main checkout, which stays on `dev`.
+The cleanup runs from the main checkout (the repo root, on `dev`). How to get there depends on how the session reached the worktree:
+
+- **The session entered it with `EnterWorktree`:** leave with the `ExitWorktree` tool (`action: "keep"`). The worktree is removed in step 5 with git, so the tool does not need to delete anything. Do not `cd` out of it.
+- **The session was started inside the worktree** (the user opened Claude there in another terminal): a session cannot remove the folder it lives in. Tell the user to close this session and run `/finish-work <branch>` from the session in the main checkout, and stop here.
+- **The session is already in the main checkout:** continue.
 
 ## 5. Update dev, then remove the worktree and branch
 
@@ -47,7 +51,7 @@ git branch -d <branch>
 ```
 
 - `git pull` first, so `dev` contains the merge and `git branch -d` sees the branch as merged.
-- If `git branch -d` still refuses (e.g. the PR was squashed), the PR state from step 2 already proves it was merged: tell the user and use `git branch -D <branch>`.
+- If `git branch -d` still refuses, the PR state from step 2 already proves it was merged: tell the user and use `git branch -D <branch>`.
 - `--prune` drops the remote-tracking branch that GitHub deleted after the merge.
 
 ## 6. Report

@@ -31,6 +31,8 @@ If the request mixes types (e.g. a feature that also fixes a bug), use the main 
 
 ## 3. Create the worktree
 
+**Already inside a worktree?** If the session started inside `.claude/worktrees/<folder>` (the user opened Claude there, see "New terminal" below), skip this step: the worktree exists and the session is in it. Continue with step 4 if `node_modules` is missing, otherwise with step 5.
+
 Pick the branch name following `.claude/rules/git-workflow.md` and tell the user. The worktree folder is the branch name with `/` replaced by `-` (`feat/orders-crud` → `.claude/worktrees/feat-orders-crud`).
 
 Run from the main checkout (the repo root, which stays on `dev`):
@@ -44,15 +46,22 @@ git worktree add --no-track -b <branch> .claude/worktrees/<folder> origin/dev
 - If `origin/dev` does not exist, stop and tell the user: `dev` must be created once from `main` (with their approval for the push).
 - If the branch or the folder already exists, stop and ask whether to continue that work or pick another name.
 
-Then move the session into the worktree with the `EnterWorktree` tool (`path`: the absolute worktree path). Run every later command from there.
+Then ask the user where the work continues:
+
+- **This session:** move the session into the worktree with the `EnterWorktree` tool (`path`: the absolute worktree path). Never `cd` into a worktree: only `EnterWorktree` records where the session came from, so `ExitWorktree` can bring it back. Run every later command from the worktree.
+- **New terminal** (to keep this session free, e.g. to start another piece of work in parallel): give the user the command to open Claude in the worktree, with the request and the decisions made so far, and stop here. That new session continues from step 4.
+
+  ```bash
+  cd <absolute worktree path> && claude "/start-work <request and decisions so far>"
+  ```
 
 ## 4. Set up the worktree
 
-A worktree is a fresh checkout: it has no `node_modules` and no `.env` (gitignored).
+A worktree is a fresh checkout: it has no `node_modules` and no `.env` (gitignored). Find the main checkout (the parent folder of the shared git dir), copy its `.env` if it has one, and install the dependencies. Run each command on its own: in an `EnterWorktree` session Claude Code refuses git commands nested inside `$(...)`.
 
 ```bash
-main_dir="$(dirname "$(git rev-parse --path-format=absolute --git-common-dir)")"
-[ -f "$main_dir/.env" ] && cp "$main_dir/.env" .env
+git rev-parse --path-format=absolute --git-common-dir   # → <main checkout>/.git
+cp <main checkout>/.env .env                            # only if that file exists
 npm ci
 ```
 
