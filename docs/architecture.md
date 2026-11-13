@@ -51,6 +51,15 @@ Sorting lives in the service, not in `InMemoryRepository`, so the repository sta
 
 For each HTTP request it validates the `x-mock-delay` / `x-mock-status` headers (`400` if invalid), waits for the delay with an RxJS `timer` (skipped when the delay is 0), then throws the forced status or a random `500`, or calls the handler. Because Nest runs guards before interceptors and pipes after them, auth errors win over a forced status, and a forced status skips validation and the handler. Routes Nest does not handle (unknown routes, Swagger UI) never reach the interceptor; `GET /seed/status` and `/api/docs*` are also exempt from the env delay and random errors.
 
+## Error format and request id
+
+`setupApp()` registers two pieces so every error has the same shape (see the conventions in [features.md](features.md)):
+
+- `requestIdMiddleware` ([src/core/utils/request-id.ts](../src/core/utils/request-id.ts)) runs first on every request. `resolveRequestId()` takes a valid `x-request-id` header or generates a uuid v4, stores it on the request and the middleware echoes it as the `x-request-id` response header.
+- `AllExceptionsFilter` ([src/core/filters/all-exceptions.filter.ts](../src/core/filters/all-exceptions.filter.ts)) is a global `@Catch()` filter. It turns any exception into `{ statusCode, error, message, path, timestamp, requestId }`: for an `HttpException` it reads `message` (a string, or the `ValidationPipe` array) and `error` from its response; anything else becomes a `500` with a generic message and the stack trace goes to the logger. Unknown routes reach it too, as Nest's `NotFoundException`.
+
+Services keep throwing the usual Nest exceptions (`NotFoundException`, `ConflictException`, …); the filter only formats them.
+
 ## Swagger
 
 Served at `/api/docs` with Bearer auth configured. `main.ts` adds `x-mock-delay` and `x-mock-status` as global header parameters, so they show up on every endpoint.
