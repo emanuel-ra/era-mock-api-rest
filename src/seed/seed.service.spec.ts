@@ -4,6 +4,7 @@ import { UsersRepository } from '../auth/repositories/users.repository';
 import { CategoriesRepository } from '../categories/categories.repository';
 import { Role } from '../core/decorators/roles.decorator';
 import { CustomersRepository } from '../customers/customers.repository';
+import { OrdersRepository } from '../orders/orders.repository';
 import { ProductsRepository } from '../products/products.repository';
 import { SeedService } from './seed.service';
 
@@ -13,6 +14,7 @@ describe('SeedService', () => {
   let customersRepo: CustomersRepository;
   let categoriesRepo: CategoriesRepository;
   let productsRepo: ProductsRepository;
+  let ordersRepo: OrdersRepository;
 
   beforeEach(async () => {
     const moduleRef = await Test.createTestingModule({
@@ -22,6 +24,7 @@ describe('SeedService', () => {
         CategoriesRepository,
         CustomersRepository,
         ProductsRepository,
+        OrdersRepository,
       ],
     }).compile();
 
@@ -30,13 +33,14 @@ describe('SeedService', () => {
     customersRepo = moduleRef.get(CustomersRepository);
     categoriesRepo = moduleRef.get(CategoriesRepository);
     productsRepo = moduleRef.get(ProductsRepository);
+    ordersRepo = moduleRef.get(OrdersRepository);
 
     // compile() does not run lifecycle hooks; call it like Nest does on boot.
     await service.onModuleInit();
   });
 
-  it('seeds 3 users, 7 categories, 30 customers and 30 products on boot', () => {
-    expect(service.status()).toEqual({ users: 3, categories: 7, customers: 30, products: 30 });
+  it('seeds 3 users, 7 categories, 30 customers, 30 products and 20 orders on boot', () => {
+    expect(service.status()).toEqual({ users: 3, categories: 7, customers: 30, products: 30, orders: 20 });
   });
 
   it('seeds the default users with fixed ids and the shared password', async () => {
@@ -60,6 +64,19 @@ describe('SeedService', () => {
     );
   });
 
+  it('links every order to seeded customers and products, with a matching total', () => {
+    const customerIds = new Set(customersRepo.findAll().map((c) => c.id));
+    const productIds = new Set(productsRepo.findAll().map((p) => p.id));
+
+    for (const order of ordersRepo.findAll()) {
+      expect(customerIds.has(order.customerId)).toBe(true);
+      expect(order.items.length).toBeGreaterThanOrEqual(1);
+      expect(order.items.every((item) => productIds.has(item.productId))).toBe(true);
+      const sum = order.items.reduce((total, item) => total + item.subtotal, 0);
+      expect(order.total).toBeCloseTo(sum, 2);
+    }
+  });
+
   it('reset discards changes and re-seeds with the same user ids', async () => {
     customersRepo.create({
       name: 'Extra',
@@ -75,7 +92,7 @@ describe('SeedService', () => {
 
     await service.reset();
 
-    expect(service.status()).toEqual({ users: 3, categories: 7, customers: 30, products: 30 });
+    expect(service.status()).toEqual({ users: 3, categories: 7, customers: 30, products: 30, orders: 20 });
     expect(customersRepo.findByEmail('extra@example.com')).toBeUndefined();
     expect(usersRepo.findById('00000000-0000-4000-8000-000000000001')).toBeDefined();
   });

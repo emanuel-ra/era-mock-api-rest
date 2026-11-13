@@ -3,8 +3,11 @@ import { faker } from '@faker-js/faker';
 import * as bcrypt from 'bcryptjs';
 import { UsersRepository } from '../auth/repositories/users.repository';
 import { CategoriesRepository } from '../categories/categories.repository';
+import { toCents } from '../core/utils/money';
 import { slugify } from '../core/utils/slugify';
 import { CustomersRepository } from '../customers/customers.repository';
+import { OrderStatus } from '../orders/entities/order.entity';
+import { OrdersRepository } from '../orders/orders.repository';
 import { ProductsRepository } from '../products/products.repository';
 import { Role } from '../core/decorators/roles.decorator';
 import { ProductStatus } from '../products/entities/product.entity';
@@ -18,6 +21,7 @@ export class SeedService implements OnModuleInit {
     private readonly categoriesRepo: CategoriesRepository,
     private readonly customersRepo: CustomersRepository,
     private readonly productsRepo: ProductsRepository,
+    private readonly ordersRepo: OrdersRepository,
   ) {}
 
   async onModuleInit() {
@@ -29,6 +33,7 @@ export class SeedService implements OnModuleInit {
     this.categoriesRepo.clear();
     this.customersRepo.clear();
     this.productsRepo.clear();
+    this.ordersRepo.clear();
     await this.seed();
   }
 
@@ -38,6 +43,7 @@ export class SeedService implements OnModuleInit {
       categories: this.categoriesRepo.count(),
       customers: this.customersRepo.count(),
       products: this.productsRepo.count(),
+      orders: this.ordersRepo.count(),
     };
   }
 
@@ -46,6 +52,7 @@ export class SeedService implements OnModuleInit {
     this.seedCategories();
     this.seedCustomers();
     this.seedProducts();
+    this.seedOrders();
   }
 
   private async seedUsers() {
@@ -109,6 +116,36 @@ export class SeedService implements OnModuleInit {
         categoryId: faker.helpers.arrayElement(categoryIds),
         status: faker.helpers.arrayElement(statuses),
         imageUrl: faker.image.url(),
+      });
+    }
+  }
+
+  private seedOrders() {
+    const customerIds = this.customersRepo.findAll().map((c) => c.id);
+    const products = this.productsRepo.findAll();
+    const statuses = Object.values(OrderStatus);
+
+    for (let i = 0; i < 20; i++) {
+      // arrayElements returns distinct products, so no product repeats inside an order.
+      const items = faker.helpers
+        .arrayElements(products, { min: 1, max: 4 })
+        .map((p) => {
+          const quantity = faker.number.int({ min: 1, max: 5 });
+          return {
+            productId: p.id,
+            productName: p.name,
+            unitPrice: p.price,
+            quantity,
+            subtotal: toCents(p.price * quantity),
+          };
+        });
+
+      this.ordersRepo.create({
+        customerId: faker.helpers.arrayElement(customerIds),
+        items,
+        total: toCents(items.reduce((sum, item) => sum + item.subtotal, 0)),
+        status: faker.helpers.arrayElement(statuses),
+        notes: faker.datatype.boolean({ probability: 0.3 }) ? faker.lorem.sentence() : '',
       });
     }
   }

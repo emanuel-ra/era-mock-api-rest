@@ -1,5 +1,7 @@
 import { ConflictException, NotFoundException } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
+import { OrderStatus } from '../orders/entities/order.entity';
+import { OrdersRepository } from '../orders/orders.repository';
 import { CustomersRepository } from './customers.repository';
 import { CustomersService } from './customers.service';
 import { CreateCustomerDto } from './dto/create-customer.dto';
@@ -7,6 +9,7 @@ import { CreateCustomerDto } from './dto/create-customer.dto';
 describe('CustomersService', () => {
   let service: CustomersService;
   let repo: CustomersRepository;
+  let ordersRepo: OrdersRepository;
 
   const dto = (overrides: Partial<CreateCustomerDto> = {}): CreateCustomerDto => ({
     name: 'Jane Doe',
@@ -17,11 +20,12 @@ describe('CustomersService', () => {
   beforeEach(async () => {
     // The repository is in memory, so the tests use the real one.
     const moduleRef = await Test.createTestingModule({
-      providers: [CustomersService, CustomersRepository],
+      providers: [CustomersService, CustomersRepository, OrdersRepository],
     }).compile();
 
     service = moduleRef.get(CustomersService);
     repo = moduleRef.get(CustomersRepository);
+    ordersRepo = moduleRef.get(OrdersRepository);
   });
 
   describe('create', () => {
@@ -133,6 +137,20 @@ describe('CustomersService', () => {
 
     it('throws NotFoundException for an unknown id', () => {
       expect(() => service.remove('missing')).toThrow(NotFoundException);
+    });
+
+    it('rejects deleting a customer that has orders', () => {
+      const created = service.create(dto());
+      ordersRepo.create({
+        customerId: created.id,
+        items: [],
+        total: 0,
+        status: OrderStatus.Pending,
+        notes: '',
+      });
+
+      expect(() => service.remove(created.id)).toThrow(ConflictException);
+      expect(repo.findById(created.id)).toBeDefined();
     });
   });
 });

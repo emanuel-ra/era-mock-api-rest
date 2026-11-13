@@ -5,10 +5,14 @@ import { FilterCustomersDto } from './dto/filter-customers.dto';
 import { UpdateCustomerDto } from './dto/update-customer.dto';
 import { CustomerEntity } from './entities/customer.entity';
 import { CustomersRepository } from './customers.repository';
+import { OrdersRepository } from '../orders/orders.repository';
 
 @Injectable()
 export class CustomersService {
-  constructor(private readonly repo: CustomersRepository) {}
+  constructor(
+    private readonly repo: CustomersRepository,
+    private readonly ordersRepo: OrdersRepository,
+  ) {}
 
   findAll(filters: FilterCustomersDto): PaginatedResult<CustomerEntity> {
     const { page, limit, ...rest } = filters;
@@ -49,6 +53,14 @@ export class CustomersService {
   }
 
   remove(id: string): void {
-    if (!this.repo.delete(id)) throw new NotFoundException(`Customer "${id}" not found`);
+    this.repo.findByIdOrFail(id);
+
+    // Deleting it would leave orders pointing to a customer that no longer exists.
+    const orders = this.ordersRepo.countByCustomer(id);
+    if (orders > 0) {
+      throw new ConflictException(`Customer "${id}" has ${orders} order(s)`);
+    }
+
+    this.repo.delete(id);
   }
 }
