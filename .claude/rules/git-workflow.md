@@ -16,6 +16,11 @@ Every work branch lives in its own git worktree under `.claude/worktrees/<branch
 - `/finish-work`: after the PR is merged, removes the worktree and the local branch and updates `dev`.
 - `/release`: opens the PR from `dev` into `main`.
 
+A Claude session works in a worktree in one of two ways:
+
+- **Same session:** it moves in with the `EnterWorktree` tool and leaves with `ExitWorktree`. Never `cd` in or out.
+- **One terminal per worktree** (for parallel work): the user runs `cd <worktree> && claude` in a new terminal. `/finish-work` for that worktree then runs from the session in the main checkout.
+
 Before the review gate, rebase the branch on `origin/dev` so conflicts with other merged PRs are resolved in the branch. Once the branch is pushed, use `git merge origin/dev` instead of rebasing, to avoid force pushes.
 
 ## Branch names
