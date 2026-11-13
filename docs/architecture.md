@@ -11,6 +11,7 @@ NestJS REST API that runs entirely **in memory** — no database. All data is lo
 | Module | Routes | Auth |
 |--------|--------|------|
 | `AuthModule` | `POST /auth/login`, `GET /auth/me` | login is public; `/me` requires JWT |
+| `UsersModule` | `GET/POST /users`, `GET/PATCH/DELETE /users/:id` | JWT required; Admin-only |
 | `CategoriesModule` | `GET/POST /categories`, `GET/PATCH/DELETE /categories/:id` | JWT required; POST/PATCH need Admin or User; DELETE is Admin-only |
 | `CustomersModule` | `GET/POST /customers`, `GET/PATCH/DELETE /customers/:id` | JWT required; POST/PATCH need Admin or User; DELETE is Admin-only |
 | `ProductsModule` | same shape as customers | JWT required; POST/PATCH need Admin or User; DELETE is Admin-only |
@@ -21,6 +22,8 @@ NestJS REST API that runs entirely **in memory** — no database. All data is lo
 `ProductsModule` and `CategoriesModule` import each other with `forwardRef`: `ProductsService` uses `CategoriesRepository` to validate `categoryId`, and `CategoriesService` uses `ProductsRepository` to block deleting a category that products still use. Only the modules are circular; no provider depends on itself.
 
 `OrdersModule` and `CustomersModule` follow the same pattern: `OrdersService` uses `CustomersRepository` to validate `customerId`, and `CustomersService` uses `OrdersRepository` to block deleting a customer that has orders. `OrdersModule` also imports `ProductsModule` to read product names and prices.
+
+`UsersModule` imports `AuthModule` and reuses its `UsersRepository`, which login and `JwtStrategy` also read, so users created, changed or deleted through `/users` take effect for auth at once. `UsersService` strips `password` from every response.
 
 `StatsModule` only reads: it imports `CustomersModule`, `ProductsModule` and `OrdersModule` and aggregates their repositories in memory. Nothing imports it back, so it needs no `forwardRef`.
 

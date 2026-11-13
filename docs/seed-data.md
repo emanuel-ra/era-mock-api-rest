@@ -12,4 +12,4 @@ Default credentials (all share password `password123`):
 
 The seeded users have fixed ids, so JWTs issued for them stay valid across restarts and `POST /seed/reset`.
 
-Calling `POST /seed/reset` clears all stores and re-runs the seed.
+Calling `POST /seed/reset` clears all stores and re-runs the seed, so users created through `POST /users` are removed and changes to the seeded users are undone.
