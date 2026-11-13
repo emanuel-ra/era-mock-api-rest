@@ -25,7 +25,7 @@ CI (`.github/workflows/ci.yml`, GitHub Actions, Node 24) runs lint, type-check, 
 
 ## Overview
 
-NestJS REST API that runs entirely **in memory** — no database. All data is lost on restart and re-seeded on boot via `SeedModule`. Modules: `AuthModule` (JWT + roles `admin`/`user`/`viewer`), `CustomersModule`, `ProductsModule`, `SeedModule`. Swagger is served at `/api/docs`.
+NestJS REST API that runs entirely **in memory** — no database. All data is lost on restart and re-seeded on boot via `SeedModule`. Modules: `AuthModule` (JWT + roles `admin`/`user`/`viewer`), `CategoriesModule`, `CustomersModule`, `ProductsModule` (products reference categories by `categoryId`), `SeedModule`. Swagger is served at `/api/docs`.
 
 ## Environment
 

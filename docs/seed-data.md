@@ -1,6 +1,6 @@
 # Seed data
 
-Seed data is auto-loaded on boot. `SeedService.onModuleInit` populates three fixed users and 30 faker-generated customers and products.
+Seed data is auto-loaded on boot. `SeedService.onModuleInit` populates three fixed users, seven categories (Electronics, Clothing, Food, Books, Tools, Furniture, Sports), and 30 faker-generated customers and products. Every seeded product is linked to one of the seeded categories.
 
 Default credentials (all share password `password123`):
 
