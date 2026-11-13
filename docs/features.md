@@ -9,11 +9,28 @@ Conventions shared by all modules:
 - **List endpoints:** accept `page` (default 1) and `limit` (default 10, max 100) and return `{ data, meta: { total, page, limit, totalPages } }`.
 - **Sorting:** list endpoints accept `sortBy` (one of the module's sortable fields, listed in each section) and `order` (`asc` | `desc`, default `asc`). Strings sort case-insensitively, numbers and dates by value; records with no value (empty, `null`) go last in both orders. Without `sortBy` the default order (insertion order) is kept and `order` has no effect. An unknown `sortBy` or `order` returns `400`.
 - **Text filters:** fields marked *substring* match partially (case-insensitive). Other string filters must match exactly (case-insensitive).
-- **Errors:** unknown ids return `404`, duplicates on unique fields return `409`.
+- **Errors:** unknown ids return `404`, duplicates on unique fields return `409`. Every error (including `401`/`403`, unknown routes and simulated errors) answers the same JSON body:
+
+  ```json
+  {
+    "statusCode": 404,
+    "error": "Not Found",
+    "message": "Resource with id \"abc\" not found",
+    "path": "/customers/abc?page=1",
+    "timestamp": "2026-11-13T10:00:00.000Z",
+    "requestId": "3f2b8c1e-7a4d-4e9b-9c1a-2b5d6e7f8a90"
+  }
+  ```
+
+  - `error` is the status reason phrase; `path` is the requested URL with its query string; `timestamp` is ISO 8601 (UTC).
+  - `message` is a string, except validation errors (`400` from the body or query validation), which keep the array of messages, one per failed rule.
+  - Some errors add their own fields next to these, e.g. `missing` on the insufficient-stock `409` of `PATCH /orders/:id/status`. Those extra fields never replace the six above.
+  - Unexpected errors answer `500` with `message: "Internal server error"`; details are only logged on the server.
+- **Request id:** every response, success or error, carries an `x-request-id` header, and error bodies repeat it as `requestId`. Send your own `x-request-id` (1–128 letters, digits or `._:-`) to have it echoed back; otherwise, or if it is not valid, the server generates a uuid v4.
 - **Swagger:** interactive docs at `/api/docs`. The mock headers below are listed on every endpoint.
 - **Simulated latency and errors:** to test loading and error states, any request can send these optional headers:
   - `x-mock-delay: <ms>` waits that many milliseconds (integer 0–10000) before answering. It overrides `MOCK_DELAY_MS` for that request.
-  - `x-mock-status: <code>` answers that 4xx/5xx code without running the handler (no data changes, no body validation), with the usual Nest error body `{ statusCode, message, error }`. Combined with `x-mock-delay`, the delay comes first.
+  - `x-mock-status: <code>` answers that 4xx/5xx code without running the handler (no data changes, no body validation), with the standard error body described above (`message: "Simulated error (x-mock-status)"`). Combined with `x-mock-delay`, the delay comes first.
   - An invalid value in either header returns `400`.
   - Auth runs first: on a protected route without a valid token you get `401`/`403`, not the forced status.
   - Env vars `MOCK_DELAY_MS` (base latency, default 0) and `MOCK_ERROR_RATE` (0–1, chance of a random `500`, default 0) apply to every request except `GET /seed/status` and `/api/docs`.
