@@ -10,7 +10,13 @@ Conventions shared by all modules:
 - **Sorting:** list endpoints accept `sortBy` (one of the module's sortable fields, listed in each section) and `order` (`asc` | `desc`, default `asc`). Strings sort case-insensitively, numbers and dates by value; records with no value (empty, `null`) go last in both orders. Without `sortBy` the default order (insertion order) is kept and `order` has no effect. An unknown `sortBy` or `order` returns `400`.
 - **Text filters:** fields marked *substring* match partially (case-insensitive). Other string filters must match exactly (case-insensitive).
 - **Errors:** unknown ids return `404`, duplicates on unique fields return `409`.
-- **Swagger:** interactive docs at `/api/docs`.
+- **Swagger:** interactive docs at `/api/docs`. The mock headers below are listed on every endpoint.
+- **Simulated latency and errors:** to test loading and error states, any request can send these optional headers:
+  - `x-mock-delay: <ms>` waits that many milliseconds (integer 0–10000) before answering. It overrides `MOCK_DELAY_MS` for that request.
+  - `x-mock-status: <code>` answers that 4xx/5xx code without running the handler (no data changes, no body validation), with the usual Nest error body `{ statusCode, message, error }`. Combined with `x-mock-delay`, the delay comes first.
+  - An invalid value in either header returns `400`.
+  - Auth runs first: on a protected route without a valid token you get `401`/`403`, not the forced status.
+  - Env vars `MOCK_DELAY_MS` (base latency, default 0) and `MOCK_ERROR_RATE` (0–1, chance of a random `500`, default 0) apply to every request except `GET /seed/status` and `/api/docs`.
 
 ## Auth
 

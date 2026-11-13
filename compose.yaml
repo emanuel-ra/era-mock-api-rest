@@ -11,4 +11,6 @@ services:
       PORT: 3000
       JWT_SECRET: ${JWT_SECRET:-era-mock-api-secret-change-in-production}
       JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-1h}
+      MOCK_DELAY_MS: ${MOCK_DELAY_MS:-0}
+      MOCK_ERROR_RATE: ${MOCK_ERROR_RATE:-0}
     restart: unless-stopped

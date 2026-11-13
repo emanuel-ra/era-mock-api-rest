@@ -1,5 +1,10 @@
 import { INestApplication, ValidationPipe } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import helmet from 'helmet';
+import {
+  MockBehaviorInterceptor,
+  mockBehaviorOptionsFromConfig,
+} from './core/interceptors/mock-behavior.interceptor';
 
 /**
  * Global middleware and pipes shared by the real server (main.ts) and the
@@ -15,5 +20,10 @@ export function setupApp(app: INestApplication): void {
       forbidNonWhitelisted: true,
       transform: true,
     }),
+  );
+
+  // x-mock-delay / x-mock-status headers and MOCK_DELAY_MS / MOCK_ERROR_RATE.
+  app.useGlobalInterceptors(
+    new MockBehaviorInterceptor(mockBehaviorOptionsFromConfig(app.get(ConfigService))),
   );
 }
