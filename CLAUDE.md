@@ -41,6 +41,15 @@ JWT_SECRET=...
 JWT_EXPIRES_IN=1h
 ```
 
+Optional mock behavior (validated on boot; an invalid value stops the app):
+
+```
+MOCK_DELAY_MS=0      # base latency for every request, integer 0–10000
+MOCK_ERROR_RATE=0    # probability 0–1 of answering 500 at random
+```
+
+Both default to 0 when unset (CI and Docker run without `.env`); `compose.yaml` passes them through. `GET /seed/status` and `/api/docs` are exempt from both, so the Docker healthcheck keeps working. Per-request headers `x-mock-delay` and `x-mock-status` are described in `docs/features.md`.
+
 ## Detailed docs
 
 - Features catalog (modules, endpoints, access, filters): @docs/features.md

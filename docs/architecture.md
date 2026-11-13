@@ -34,6 +34,12 @@ Roles enum: `admin`, `user`, `viewer` (defined in [src/core/decorators/roles.dec
 
 `PaginationDto` (`page`, `limit`) and entity-specific `FilterXxxDto` are composed together on list endpoints. The `paginate()` helper ([src/core/dto/pagination.dto.ts](../src/core/dto/pagination.dto.ts)) slices the already-filtered array and returns `{ data, meta: { total, page, limit, totalPages } }`.
 
+## Simulated latency and errors
+
+`MockBehaviorInterceptor` ([src/core/interceptors/mock-behavior.interceptor.ts](../src/core/interceptors/mock-behavior.interceptor.ts)) is a global interceptor registered in `setupApp()` ([src/app.setup.ts](../src/app.setup.ts)), so the server and the e2e tests both use it. Its options come from `mockBehaviorOptionsFromConfig()`, which reads `MOCK_DELAY_MS` and `MOCK_ERROR_RATE` through `ConfigService` (default 0, invalid values throw on boot).
+
+For each HTTP request it validates the `x-mock-delay` / `x-mock-status` headers (`400` if invalid), waits for the delay with an RxJS `timer` (skipped when the delay is 0), then throws the forced status or a random `500`, or calls the handler. Because Nest runs guards before interceptors and pipes after them, auth errors win over a forced status, and a forced status skips validation and the handler. Routes Nest does not handle (unknown routes, Swagger UI) never reach the interceptor; `GET /seed/status` and `/api/docs*` are also exempt from the env delay and random errors.
+
 ## Swagger
 
-Served at `/api/docs` with Bearer auth configured.
+Served at `/api/docs` with Bearer auth configured. `main.ts` adds `x-mock-delay` and `x-mock-status` as global header parameters, so they show up on every endpoint.
