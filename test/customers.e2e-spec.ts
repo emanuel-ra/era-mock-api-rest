@@ -168,5 +168,18 @@ describe('Customers (e2e)', () => {
       await http().delete(`/customers/${customer.id}`).set(auth('admin')).expect(204);
       await http().get(`/customers/${customer.id}`).set(auth('admin')).expect(404);
     });
+
+    it('returns 409 when deleting a customer that has orders', async () => {
+      const customer = await createCustomer();
+      const products = await http().get('/products?limit=1').set(auth('admin')).expect(200);
+      await http()
+        .post('/orders')
+        .set(auth('admin'))
+        .send({ customerId: customer.id, items: [{ productId: products.body.data[0].id, quantity: 1 }] })
+        .expect(201);
+
+      await http().delete(`/customers/${customer.id}`).set(auth('admin')).expect(409);
+      await http().get(`/customers/${customer.id}`).set(auth('admin')).expect(200);
+    });
   });
 });
