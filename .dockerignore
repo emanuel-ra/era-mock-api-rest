@@ -2,6 +2,7 @@
 node_modules
 dist
 coverage
+reports
 
 # Secrets and local config: pass them as environment variables instead
 .env
