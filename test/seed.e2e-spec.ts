@@ -1,5 +1,5 @@
 import { INestApplication } from '@nestjs/common';
-import * as request from 'supertest';
+import request from 'supertest';
 import { createApp, login } from './helpers';
 
 describe('Seed (e2e)', () => {
