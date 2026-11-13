@@ -16,17 +16,24 @@ describe('OrdersService', () => {
   let productsRepo: ProductsRepository;
   let customerId: string;
 
-  const createProduct = (name: string, price: number) =>
+  const createProduct = (
+    name: string,
+    price: number,
+    stock = 100,
+    status: ProductStatus = ProductStatus.Active,
+  ) =>
     productsRepo.create({
       name,
       description: '',
       price,
       sku: '',
-      stock: 0,
+      stock,
       categoryId: null,
-      status: ProductStatus.Active,
+      status,
       imageUrl: '',
     });
+
+  const stockOf = (productId: string) => productsRepo.findById(productId)!;
 
   const createCustomer = (email: string) =>
     customersRepo.create({
@@ -226,6 +233,102 @@ describe('OrdersService', () => {
       expect(() => service.updateStatus('missing', { status: OrderStatus.Paid })).toThrow(
         NotFoundException,
       );
+    });
+  });
+
+  describe('updateStatus stock', () => {
+    const order = (...lines: Array<[string, number]>) =>
+      service.create({
+        customerId,
+        items: lines.map(([productId, quantity]) => ({ productId, quantity })),
+      });
+
+    it('takes each item quantity out of the product stock when paid', () => {
+      const mouse = createProduct('Mouse', 10, 5);
+      const cable = createProduct('Cable', 1, 10);
+      const o = order([mouse.id, 2], [cable.id, 10]);
+
+      service.updateStatus(o.id, { status: OrderStatus.Paid });
+
+      expect(stockOf(mouse.id)).toMatchObject({ stock: 3, status: ProductStatus.Active });
+      expect(stockOf(cable.id)).toMatchObject({ stock: 0, status: ProductStatus.OutOfStock });
+    });
+
+    it('rejects paying without enough stock, lists the missing products and changes nothing', () => {
+      const mouse = createProduct('Mouse', 10, 5);
+      const cable = createProduct('Cable', 1, 1);
+      const pad = createProduct('Pad', 1, 0, ProductStatus.OutOfStock);
+      const o = order([mouse.id, 2], [cable.id, 3], [pad.id, 1]);
+
+      let error: unknown;
+      try {
+        service.updateStatus(o.id, { status: OrderStatus.Paid });
+      } catch (e) {
+        error = e;
+      }
+
+      expect(error).toBeInstanceOf(ConflictException);
+      expect((error as ConflictException).getResponse()).toEqual({
+        statusCode: 409,
+        error: 'Conflict',
+        message: 'Insufficient stock for: Cable, Pad',
+        missing: [
+          { productId: cable.id, productName: 'Cable', requested: 3, available: 1 },
+          { productId: pad.id, productName: 'Pad', requested: 1, available: 0 },
+        ],
+      });
+      expect(service.findOne(o.id).status).toBe(OrderStatus.Pending);
+      expect(stockOf(mouse.id).stock).toBe(5);
+      expect(stockOf(cable.id).stock).toBe(1);
+    });
+
+    it('returns the stock when a paid order is cancelled and reactivates out_of_stock products', () => {
+      const mouse = createProduct('Mouse', 10, 2);
+      const o = order([mouse.id, 2]);
+      service.updateStatus(o.id, { status: OrderStatus.Paid });
+      expect(stockOf(mouse.id)).toMatchObject({ stock: 0, status: ProductStatus.OutOfStock });
+
+      service.updateStatus(o.id, { status: OrderStatus.Cancelled });
+
+      expect(stockOf(mouse.id)).toMatchObject({ stock: 2, status: ProductStatus.Active });
+    });
+
+    it('does not touch stock when a pending order is cancelled or a paid one ships', () => {
+      const mouse = createProduct('Mouse', 10, 5);
+      const pending = order([mouse.id, 1]);
+      service.updateStatus(pending.id, { status: OrderStatus.Cancelled });
+      expect(stockOf(mouse.id).stock).toBe(5);
+
+      const paid = order([mouse.id, 2]);
+      service.updateStatus(paid.id, { status: OrderStatus.Paid });
+      service.updateStatus(paid.id, { status: OrderStatus.Shipped });
+      service.updateStatus(paid.id, { status: OrderStatus.Delivered });
+      expect(stockOf(mouse.id).stock).toBe(3);
+    });
+
+    it('keeps inactive products inactive', () => {
+      const mouse = createProduct('Mouse', 10, 1, ProductStatus.Inactive);
+      const o = order([mouse.id, 1]);
+
+      service.updateStatus(o.id, { status: OrderStatus.Paid });
+      expect(stockOf(mouse.id)).toMatchObject({ stock: 0, status: ProductStatus.Inactive });
+
+      service.updateStatus(o.id, { status: OrderStatus.Cancelled });
+      expect(stockOf(mouse.id)).toMatchObject({ stock: 1, status: ProductStatus.Inactive });
+    });
+
+    it('ignores products deleted after the order was created', () => {
+      const mouse = createProduct('Mouse', 10, 5);
+      const gone = createProduct('Gone', 10, 0);
+      const o = order([mouse.id, 1], [gone.id, 3]);
+      productsRepo.delete(gone.id);
+
+      expect(service.updateStatus(o.id, { status: OrderStatus.Paid }).status).toBe(OrderStatus.Paid);
+      expect(stockOf(mouse.id).stock).toBe(4);
+
+      service.updateStatus(o.id, { status: OrderStatus.Cancelled });
+      expect(stockOf(mouse.id).stock).toBe(5);
+      expect(productsRepo.findById(gone.id)).toBeUndefined();
     });
   });
 

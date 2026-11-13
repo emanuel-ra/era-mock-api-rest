@@ -21,7 +21,7 @@ describe('Stats (e2e)', () => {
     const product = await http()
       .post('/products')
       .set(auth('admin'))
-      .send({ name: productName, price })
+      .send({ name: productName, price, stock: quantity })
       .expect(201);
     const order = await http()
       .post('/orders')
