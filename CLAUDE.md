@@ -29,7 +29,7 @@ Docker: `Dockerfile` is a two-stage build on `node:24-alpine` (build with dev de
 
 ## Overview
 
-NestJS REST API that runs entirely **in memory** — no database. All data is lost on restart and re-seeded on boot via `SeedModule`. Modules: `AuthModule` (JWT + roles `admin`/`user`/`viewer`), `CategoriesModule`, `CustomersModule`, `ProductsModule` (products reference categories by `categoryId`), `OrdersModule` (orders reference a customer and products; status flow `pending → paid → shipped → delivered` or `cancelled`), `SeedModule`. Swagger is served at `/api/docs`.
+NestJS REST API that runs entirely **in memory** — no database. All data is lost on restart and re-seeded on boot via `SeedModule`. Modules: `AuthModule` (JWT + roles `admin`/`user`/`viewer`), `CategoriesModule`, `CustomersModule`, `ProductsModule` (products reference categories by `categoryId`), `OrdersModule` (orders reference a customer and products; status flow `pending → paid → shipped → delivered` or `cancelled`), `StatsModule` (read-only dashboard aggregates over customers, products and orders), `SeedModule`. Swagger is served at `/api/docs`.
 
 ## Environment
 

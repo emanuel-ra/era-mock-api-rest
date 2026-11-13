@@ -79,6 +79,16 @@ Fields: `customerId` (required, uuid of an existing customer), `items` (required
 | PATCH | `/orders/:id/status` | admin, user | Change the status. Allowed: `pending → paid`, `paid → shipped`, `shipped → delivered`, and `pending`/`paid → cancelled`. Any other change returns `409`. |
 | DELETE | `/orders/:id` | admin | Delete an order. Returns `204`. |
 
+## Stats
+
+Read-only aggregates for a dashboard. Only orders with status `paid`, `shipped` or `delivered` count as sales (revenue, the sales series and top products); `pending` and `cancelled` orders do not. Amounts are rounded to cents.
+
+| Method | Route | Access | Description |
+|--------|-------|--------|-------------|
+| GET | `/stats/summary` | JWT (any role) | `{ customers: { total, active }, products: { total, outOfStock, lowStock }, orders: { total, byStatus: { pending, paid, shipped, delivered, cancelled } }, revenue: { total } }`. `outOfStock` counts products with status `out_of_stock`; `lowStock` counts products with `stock < 5`. |
+| GET | `/stats/sales` | JWT (any role) | Time series `[{ period, orders, revenue }]` by order `createdAt`. Query: `from` and `to` (`YYYY-MM-DD`, UTC, both days included; default the last 30 days up to today) and `groupBy` (`day` → `YYYY-MM-DD` periods, `month` → `YYYY-MM`; default `day`). Periods without sales return zeros. `400` if a date is invalid, `from` is after `to`, or a `day` range is longer than 366 days. |
+| GET | `/stats/top-products` | JWT (any role) | Best-selling products by quantity: `[{ productId, productName, quantity, revenue }]`, ties broken by revenue. Read from the order lines, so deleted products are included, with the name from their latest order. Query: `limit` (1–50, default 5). |
+
 ## Seed
 
 Manage the in-memory mock data. Data is seeded automatically on boot (see [seed-data.md](seed-data.md)).
