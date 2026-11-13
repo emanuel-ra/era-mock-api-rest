@@ -12,6 +12,9 @@ import { ProductsRepository } from '../products/products.repository';
 import { Role } from '../core/decorators/roles.decorator';
 import { ProductStatus } from '../products/entities/product.entity';
 
+/** Seeded orders get a random creation date within this many days before now. */
+const ORDER_HISTORY_DAYS = 90;
+
 const CATEGORY_NAMES = ['Electronics', 'Clothing', 'Food', 'Books', 'Tools', 'Furniture', 'Sports'];
 
 @Injectable()
@@ -124,6 +127,8 @@ export class SeedService implements OnModuleInit {
     const customerIds = this.customersRepo.findAll().map((c) => c.id);
     const products = this.productsRepo.findAll();
     const statuses = Object.values(OrderStatus);
+    const now = new Date();
+    const from = new Date(now.getTime() - ORDER_HISTORY_DAYS * 24 * 60 * 60 * 1000);
 
     for (let i = 0; i < 20; i++) {
       // arrayElements returns distinct products, so no product repeats inside an order.
@@ -140,13 +145,17 @@ export class SeedService implements OnModuleInit {
           };
         });
 
-      this.ordersRepo.create({
-        customerId: faker.helpers.arrayElement(customerIds),
-        items,
-        total: toCents(items.reduce((sum, item) => sum + item.subtotal, 0)),
-        status: faker.helpers.arrayElement(statuses),
-        notes: faker.datatype.boolean({ probability: 0.3 }) ? faker.lorem.sentence() : '',
-      });
+      this.ordersRepo.create(
+        {
+            customerId: faker.helpers.arrayElement(customerIds),
+          items,
+          total: toCents(items.reduce((sum, item) => sum + item.subtotal, 0)),
+          status: faker.helpers.arrayElement(statuses),
+          notes: faker.datatype.boolean({ probability: 0.3 }) ? faker.lorem.sentence() : '',
+        },
+        undefined,
+        faker.date.between({ from, to: now }),
+      );
     }
   }
 }

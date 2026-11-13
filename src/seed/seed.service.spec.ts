@@ -77,6 +77,15 @@ describe('SeedService', () => {
     }
   });
 
+  it('spreads order creation dates over the last 90 days', () => {
+    const now = Date.now();
+    const ninetyDaysAgo = now - 90 * 24 * 60 * 60 * 1000;
+    const times = ordersRepo.findAll().map((o) => o.createdAt.getTime());
+
+    expect(times.every((t) => t >= ninetyDaysAgo && t <= now)).toBe(true);
+    expect(new Set(times).size).toBeGreaterThan(1);
+  });
+
   it('reset discards changes and re-seeds with the same user ids', async () => {
     customersRepo.create({
       name: 'Extra',
