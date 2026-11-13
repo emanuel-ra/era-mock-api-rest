@@ -20,14 +20,28 @@ Conventions shared by all modules:
 
 ## Auth
 
-Login and identity of the current user. Users are seeded and cannot be created through the API.
+Login and identity of the current user. Three users are seeded (see [seed-data.md](seed-data.md)); admins manage the rest through [Users](#users).
 
 | Method | Route | Access | Description |
 |--------|-------|--------|-------------|
 | POST | `/auth/login` | Public | Validates `email` + `password` and returns `{ accessToken, user: { id, email, name, role } }`. Invalid credentials return `401`. |
 | GET | `/auth/me` | JWT (any role) | Returns the authenticated user without the password. |
 
-Tokens are rejected if their user no longer exists.
+Tokens are rejected if their user no longer exists, and the role is read from the stored user on every request, so a role change applies to existing tokens at once.
+
+## Users
+
+User management, admin only. Users log in through `POST /auth/login`.
+
+Fields: `name` (required, min 2), `email` (required, unique case-insensitive), `password` (required, min 6; stored as a bcrypt hash and never returned), `role` (`admin` | `user` | `viewer`, default `user`). Responses never include `password`.
+
+| Method | Route | Access | Description |
+|--------|-------|--------|-------------|
+| GET | `/users` | admin | Paginated list. Filters: `name` (substring), `email` (substring), `role` (enum). Sortable by `name`, `email`, `role`, `createdAt`. |
+| GET | `/users/:id` | admin | Get one user. |
+| POST | `/users` | admin | Create a user. `409` if the email already exists. |
+| PATCH | `/users/:id` | admin | Partial update; a new `password` is hashed again. `409` if the new email belongs to another user, or if an admin removes the `admin` role from themselves. |
+| DELETE | `/users/:id` | admin | Delete a user. Returns `204`, or `409` if an admin tries to delete themselves. The deleted user's tokens stop working. |
 
 ## Customers
 
