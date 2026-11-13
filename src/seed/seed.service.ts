@@ -90,6 +90,7 @@ export class SeedService implements OnModuleInit {
   }
 
   private seedProducts() {
+    const categoryIds = this.categoriesRepo.findAll().map((c) => c.id);
     const statuses = [
       ProductStatus.Active,
       ProductStatus.Active,
@@ -105,7 +106,7 @@ export class SeedService implements OnModuleInit {
         price: parseFloat(faker.commerce.price({ min: 5, max: 500 })),
         sku: faker.string.alphanumeric(8).toUpperCase(),
         stock: faker.number.int({ min: 0, max: 200 }),
-        category: faker.helpers.arrayElement(CATEGORY_NAMES),
+        categoryId: faker.helpers.arrayElement(categoryIds),
         status: faker.helpers.arrayElement(statuses),
         imageUrl: faker.image.url(),
       });

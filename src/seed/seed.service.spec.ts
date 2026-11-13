@@ -11,6 +11,8 @@ describe('SeedService', () => {
   let service: SeedService;
   let usersRepo: UsersRepository;
   let customersRepo: CustomersRepository;
+  let categoriesRepo: CategoriesRepository;
+  let productsRepo: ProductsRepository;
 
   beforeEach(async () => {
     const moduleRef = await Test.createTestingModule({
@@ -26,6 +28,8 @@ describe('SeedService', () => {
     service = moduleRef.get(SeedService);
     usersRepo = moduleRef.get(UsersRepository);
     customersRepo = moduleRef.get(CustomersRepository);
+    categoriesRepo = moduleRef.get(CategoriesRepository);
+    productsRepo = moduleRef.get(ProductsRepository);
 
     // compile() does not run lifecycle hooks; call it like Nest does on boot.
     await service.onModuleInit();
@@ -42,6 +46,18 @@ describe('SeedService', () => {
     expect(usersRepo.findByEmail('user@mock.dev')?.role).toBe(Role.User);
     expect(usersRepo.findByEmail('viewer@mock.dev')?.role).toBe(Role.Viewer);
     await expect(bcrypt.compare('password123', admin!.password)).resolves.toBe(true);
+  });
+
+  it('seeds the default categories and links every product to one of them', () => {
+    const categories = categoriesRepo.findAll();
+    expect(categories.map((c) => c.slug)).toEqual(
+      expect.arrayContaining(['electronics', 'clothing', 'sports']),
+    );
+
+    const ids = new Set(categories.map((c) => c.id));
+    expect(productsRepo.findAll().every((p) => p.categoryId !== null && ids.has(p.categoryId))).toBe(
+      true,
+    );
   });
 
   it('reset discards changes and re-seeds with the same user ids', async () => {

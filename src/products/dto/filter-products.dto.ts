@@ -1,5 +1,5 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
-import { IsEnum, IsOptional, IsString } from 'class-validator';
+import { IsEnum, IsOptional, IsString, IsUUID } from 'class-validator';
 import { PaginationDto } from '../../core/dto/pagination.dto';
 import { ProductStatus } from '../entities/product.entity';
 
@@ -9,10 +9,10 @@ export class FilterProductsDto extends PaginationDto {
   @IsString()
   name?: string;
 
-  @ApiPropertyOptional()
+  @ApiPropertyOptional({ format: 'uuid' })
   @IsOptional()
-  @IsString()
-  category?: string;
+  @IsUUID('4')
+  categoryId?: string;
 
   @ApiPropertyOptional({ enum: ProductStatus })
   @IsOptional()

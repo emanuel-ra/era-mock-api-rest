@@ -7,6 +7,7 @@ import {
   IsPositive,
   IsString,
   IsUrl,
+  IsUUID,
   Min,
   MinLength,
 } from 'class-validator';
@@ -39,10 +40,16 @@ export class CreateProductDto {
   @Min(0)
   stock?: number;
 
-  @ApiPropertyOptional({ example: 'Electronics' })
+  @ApiPropertyOptional({
+    // Explicit type: TypeScript reports `string | null` to Swagger as Object.
+    type: String,
+    format: 'uuid',
+    nullable: true,
+    description: 'Id of an existing category. null removes the category.',
+  })
   @IsOptional()
-  @IsString()
-  category?: string;
+  @IsUUID('4')
+  categoryId?: string | null;
 
   @ApiPropertyOptional({ enum: ProductStatus, default: ProductStatus.Active })
   @IsOptional()
