@@ -18,7 +18,7 @@ describe('Seed (e2e)', () => {
   it('GET /seed/status is public and returns the counts', async () => {
     const res = await http().get('/seed/status').expect(200);
 
-    expect(res.body).toEqual({ users: 3, categories: 7, customers: 30, products: 30 });
+    expect(res.body).toEqual({ users: 3, categories: 7, customers: 30, products: 30, orders: 20 });
   });
 
   it('POST /seed/reset discards changes and keeps issued tokens valid', async () => {
@@ -38,6 +38,7 @@ describe('Seed (e2e)', () => {
       categories: 7,
       customers: 30,
       products: 30,
+      orders: 20,
     });
     // Seeded users keep fixed ids, so a token issued before the reset still works.
     await http().get('/auth/me').set('Authorization', `Bearer ${token}`).expect(200);
