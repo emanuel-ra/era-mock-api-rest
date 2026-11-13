@@ -29,6 +29,7 @@ npm run type-check  # TypeScript compile check with noEmit
 npm test            # Jest unit tests (src/**/*.spec.ts)
 npm run test:cov    # unit tests with coverage
 npm run test:e2e    # e2e tests over HTTP (test/**/*.e2e-spec.ts)
+docker compose up --build   # run the API in Docker
 npx jest src/customers/customers.service.spec.ts   # single test file
 ```
 
