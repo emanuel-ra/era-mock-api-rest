@@ -36,18 +36,32 @@ Fields: `name` (required, min 2), `email` (required, unique), `phone`, `address`
 | PATCH | `/customers/:id` | admin, user | Partial update. `409` if the new email belongs to another customer. |
 | DELETE | `/customers/:id` | admin | Delete a customer. Returns `204`. |
 
+## Categories
+
+Product categories. Products reference them by id (`categoryId`).
+
+Fields: `name` (required, min 2, unique case-insensitive), `slug` (unique; lowercase letters, numbers and single dashes; generated from the name when omitted, e.g. `Home & Garden` → `home-garden`, and not regenerated when the name changes), `description`, `isActive` (default `true`).
+
+| Method | Route | Access | Description |
+|--------|-------|--------|-------------|
+| GET | `/categories` | JWT (any role) | Paginated list. Filters: `name` (substring), `isActive` (boolean). |
+| GET | `/categories/:id` | JWT (any role) | Get one category. |
+| POST | `/categories` | admin, user | Create a category. `409` if the name or slug already exists; `400` if no slug can be generated from the name. |
+| PATCH | `/categories/:id` | admin, user | Partial update. `409` if the new name or slug belongs to another category. |
+| DELETE | `/categories/:id` | admin | Delete a category. Returns `204`, or `409` if products still use it. |
+
 ## Products
 
 CRUD for the product catalog.
 
-Fields: `name` (required, min 2), `price` (required, positive, max 2 decimals), `description`, `sku` (unique when set), `stock` (int ≥ 0, default 0), `category` (default `Uncategorized`), `status` (`active` | `inactive` | `out_of_stock`, default `active`), `imageUrl` (URL).
+Fields: `name` (required, min 2), `price` (required, positive, max 2 decimals), `description`, `sku` (unique when set), `stock` (int ≥ 0, default 0), `categoryId` (uuid of an existing category, or `null` for no category; default `null`), `status` (`active` | `inactive` | `out_of_stock`, default `active`), `imageUrl` (URL).
 
 | Method | Route | Access | Description |
 |--------|-------|--------|-------------|
-| GET | `/products` | JWT (any role) | Paginated list. Filters: `name` (substring), `category` (exact), `status` (enum). |
+| GET | `/products` | JWT (any role) | Paginated list. Filters: `name` (substring), `categoryId` (exact uuid), `status` (enum). |
 | GET | `/products/:id` | JWT (any role) | Get one product. |
-| POST | `/products` | admin, user | Create a product. `409` if the SKU already exists. |
-| PATCH | `/products/:id` | admin, user | Partial update. `409` if the new SKU belongs to another product. |
+| POST | `/products` | admin, user | Create a product. `409` if the SKU already exists; `400` if `categoryId` does not exist. |
+| PATCH | `/products/:id` | admin, user | Partial update. `409` if the new SKU belongs to another product; `400` if `categoryId` does not exist. Send `categoryId: null` to remove the category. |
 | DELETE | `/products/:id` | admin | Delete a product. Returns `204`. |
 
 ## Seed
@@ -57,4 +71,4 @@ Manage the in-memory mock data. Data is seeded automatically on boot (see [seed-
 | Method | Route | Access | Description |
 |--------|-------|--------|-------------|
 | POST | `/seed/reset` | Public | Clears all stores and re-seeds them with fresh Faker data. Returns a message plus the record counts. |
-| GET | `/seed/status` | Public | Returns the record count per module: `{ users, customers, products }`. |
+| GET | `/seed/status` | Public | Returns the record count per module: `{ users, categories, customers, products }`. |

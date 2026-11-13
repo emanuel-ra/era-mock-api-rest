@@ -11,9 +11,12 @@ NestJS REST API that runs entirely **in memory** — no database. All data is lo
 | Module | Routes | Auth |
 |--------|--------|------|
 | `AuthModule` | `POST /auth/login`, `GET /auth/me` | login is public; `/me` requires JWT |
+| `CategoriesModule` | `GET/POST /categories`, `GET/PATCH/DELETE /categories/:id` | JWT required; POST/PATCH need Admin or User; DELETE is Admin-only |
 | `CustomersModule` | `GET/POST /customers`, `GET/PATCH/DELETE /customers/:id` | JWT required; POST/PATCH need Admin or User; DELETE is Admin-only |
 | `ProductsModule` | same shape as customers | JWT required; POST/PATCH need Admin or User; DELETE is Admin-only |
 | `SeedModule` | `POST /seed/reset`, `GET /seed/status` | public |
+
+`ProductsModule` and `CategoriesModule` import each other with `forwardRef`: `ProductsService` uses `CategoriesRepository` to validate `categoryId`, and `CategoriesService` uses `ProductsRepository` to block deleting a category that products still use. Only the modules are circular; no provider depends on itself.
 
 ## Auth & roles
 

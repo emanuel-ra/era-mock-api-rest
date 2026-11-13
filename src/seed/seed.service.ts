@@ -2,15 +2,20 @@ import { Injectable, OnModuleInit } from '@nestjs/common';
 import { faker } from '@faker-js/faker';
 import * as bcrypt from 'bcryptjs';
 import { UsersRepository } from '../auth/repositories/users.repository';
+import { CategoriesRepository } from '../categories/categories.repository';
+import { slugify } from '../core/utils/slugify';
 import { CustomersRepository } from '../customers/customers.repository';
 import { ProductsRepository } from '../products/products.repository';
 import { Role } from '../core/decorators/roles.decorator';
 import { ProductStatus } from '../products/entities/product.entity';
 
+const CATEGORY_NAMES = ['Electronics', 'Clothing', 'Food', 'Books', 'Tools', 'Furniture', 'Sports'];
+
 @Injectable()
 export class SeedService implements OnModuleInit {
   constructor(
     private readonly usersRepo: UsersRepository,
+    private readonly categoriesRepo: CategoriesRepository,
     private readonly customersRepo: CustomersRepository,
     private readonly productsRepo: ProductsRepository,
   ) {}
@@ -21,6 +26,7 @@ export class SeedService implements OnModuleInit {
 
   async reset() {
     this.usersRepo.clear();
+    this.categoriesRepo.clear();
     this.customersRepo.clear();
     this.productsRepo.clear();
     await this.seed();
@@ -29,6 +35,7 @@ export class SeedService implements OnModuleInit {
   status() {
     return {
       users: this.usersRepo.count(),
+      categories: this.categoriesRepo.count(),
       customers: this.customersRepo.count(),
       products: this.productsRepo.count(),
     };
@@ -36,6 +43,7 @@ export class SeedService implements OnModuleInit {
 
   private async seed() {
     await this.seedUsers();
+    this.seedCategories();
     this.seedCustomers();
     this.seedProducts();
   }
@@ -55,6 +63,17 @@ export class SeedService implements OnModuleInit {
     }
   }
 
+  private seedCategories() {
+    for (const name of CATEGORY_NAMES) {
+      this.categoriesRepo.create({
+        name,
+        slug: slugify(name),
+        description: faker.commerce.productDescription(),
+        isActive: true,
+      });
+    }
+  }
+
   private seedCustomers() {
     for (let i = 0; i < 30; i++) {
       this.customersRepo.create({
@@ -71,7 +90,7 @@ export class SeedService implements OnModuleInit {
   }
 
   private seedProducts() {
-    const categories = ['Electronics', 'Clothing', 'Food', 'Books', 'Tools', 'Furniture', 'Sports'];
+    const categoryIds = this.categoriesRepo.findAll().map((c) => c.id);
     const statuses = [
       ProductStatus.Active,
       ProductStatus.Active,
@@ -87,7 +106,7 @@ export class SeedService implements OnModuleInit {
         price: parseFloat(faker.commerce.price({ min: 5, max: 500 })),
         sku: faker.string.alphanumeric(8).toUpperCase(),
         stock: faker.number.int({ min: 0, max: 200 }),
-        category: faker.helpers.arrayElement(categories),
+        categoryId: faker.helpers.arrayElement(categoryIds),
         status: faker.helpers.arrayElement(statuses),
         imageUrl: faker.image.url(),
       });

@@ -7,6 +7,7 @@ This repo is a NestJS REST API that keeps all state in memory. There is no datab
 The app is assembled in `src/app.module.ts` with these modules:
 
 - `AuthModule`: JWT login and identity endpoints
+- `CategoriesModule`: category CRUD (products reference categories by `categoryId`)
 - `CustomersModule`: customer CRUD
 - `ProductsModule`: product CRUD
 - `SeedModule`: reset/status endpoints and bootstrap seeding

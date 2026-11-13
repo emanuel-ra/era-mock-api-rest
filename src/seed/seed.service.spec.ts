@@ -1,6 +1,7 @@
 import { Test } from '@nestjs/testing';
 import * as bcrypt from 'bcryptjs';
 import { UsersRepository } from '../auth/repositories/users.repository';
+import { CategoriesRepository } from '../categories/categories.repository';
 import { Role } from '../core/decorators/roles.decorator';
 import { CustomersRepository } from '../customers/customers.repository';
 import { ProductsRepository } from '../products/products.repository';
@@ -10,22 +11,32 @@ describe('SeedService', () => {
   let service: SeedService;
   let usersRepo: UsersRepository;
   let customersRepo: CustomersRepository;
+  let categoriesRepo: CategoriesRepository;
+  let productsRepo: ProductsRepository;
 
   beforeEach(async () => {
     const moduleRef = await Test.createTestingModule({
-      providers: [SeedService, UsersRepository, CustomersRepository, ProductsRepository],
+      providers: [
+        SeedService,
+        UsersRepository,
+        CategoriesRepository,
+        CustomersRepository,
+        ProductsRepository,
+      ],
     }).compile();
 
     service = moduleRef.get(SeedService);
     usersRepo = moduleRef.get(UsersRepository);
     customersRepo = moduleRef.get(CustomersRepository);
+    categoriesRepo = moduleRef.get(CategoriesRepository);
+    productsRepo = moduleRef.get(ProductsRepository);
 
     // compile() does not run lifecycle hooks; call it like Nest does on boot.
     await service.onModuleInit();
   });
 
-  it('seeds 3 users, 30 customers and 30 products on boot', () => {
-    expect(service.status()).toEqual({ users: 3, customers: 30, products: 30 });
+  it('seeds 3 users, 7 categories, 30 customers and 30 products on boot', () => {
+    expect(service.status()).toEqual({ users: 3, categories: 7, customers: 30, products: 30 });
   });
 
   it('seeds the default users with fixed ids and the shared password', async () => {
@@ -35,6 +46,18 @@ describe('SeedService', () => {
     expect(usersRepo.findByEmail('user@mock.dev')?.role).toBe(Role.User);
     expect(usersRepo.findByEmail('viewer@mock.dev')?.role).toBe(Role.Viewer);
     await expect(bcrypt.compare('password123', admin!.password)).resolves.toBe(true);
+  });
+
+  it('seeds the default categories and links every product to one of them', () => {
+    const categories = categoriesRepo.findAll();
+    expect(categories.map((c) => c.slug)).toEqual(
+      expect.arrayContaining(['electronics', 'clothing', 'sports']),
+    );
+
+    const ids = new Set(categories.map((c) => c.id));
+    expect(productsRepo.findAll().every((p) => p.categoryId !== null && ids.has(p.categoryId))).toBe(
+      true,
+    );
   });
 
   it('reset discards changes and re-seeds with the same user ids', async () => {
@@ -52,7 +75,7 @@ describe('SeedService', () => {
 
     await service.reset();
 
-    expect(service.status()).toEqual({ users: 3, customers: 30, products: 30 });
+    expect(service.status()).toEqual({ users: 3, categories: 7, customers: 30, products: 30 });
     expect(customersRepo.findByEmail('extra@example.com')).toBeUndefined();
     expect(usersRepo.findById('00000000-0000-4000-8000-000000000001')).toBeDefined();
   });

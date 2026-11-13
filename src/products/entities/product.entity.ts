@@ -12,7 +12,7 @@ export class ProductEntity extends BaseEntity {
   price: number;
   sku: string;
   stock: number;
-  category: string;
+  categoryId: string | null;
   status: ProductStatus;
   imageUrl: string;
 }

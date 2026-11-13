@@ -12,7 +12,7 @@ describe('ProductsRepository', () => {
     price: 29.99,
     sku: 'WM-001',
     stock: 10,
-    category: 'Electronics',
+    categoryId: 'cat-1',
     status: ProductStatus.Active,
     imageUrl: '',
     ...overrides,
@@ -33,6 +33,15 @@ describe('ProductsRepository', () => {
     repo.create(product());
 
     expect(repo.findAll({ name: 'mouse' })).toHaveLength(1);
-    expect(repo.findAll({ category: 'Elec' })).toHaveLength(0);
+    expect(repo.findAll({ categoryId: 'cat' })).toHaveLength(0);
+  });
+
+  it('counts the products of a category', () => {
+    repo.create(product({ categoryId: 'cat-1' }));
+    repo.create(product({ categoryId: 'cat-1' }));
+    repo.create(product({ categoryId: null }));
+
+    expect(repo.countByCategory('cat-1')).toBe(2);
+    expect(repo.countByCategory('cat-2')).toBe(0);
   });
 });

@@ -20,6 +20,15 @@ describe('Products (e2e)', () => {
     return res.body;
   }
 
+  async function createCategory(): Promise<string> {
+    const res = await http()
+      .post('/categories')
+      .set(auth('admin'))
+      .send({ name: `E2E Products Category ${++counter}` })
+      .expect(201);
+    return res.body.id;
+  }
+
   beforeAll(async () => {
     app = await createApp();
     tokens = await loginAll(app);
@@ -63,16 +72,35 @@ describe('Products (e2e)', () => {
       expect(res.body.data.every((p: { status: string }) => p.status === 'active')).toBe(true);
     });
 
-    it('filters by category and name', async () => {
-      await createProduct({ name: 'Qwerty Gadget', category: 'E2E Category' });
+    it('filters by categoryId and name', async () => {
+      const categoryId = await createCategory();
+      await createProduct({ name: 'Qwerty Gadget', categoryId });
+      await createProduct({ name: 'Qwerty Other' });
 
       const res = await http()
-        .get('/products?category=e2e%20category&name=qwerty')
+        .get(`/products?categoryId=${categoryId}&name=qwerty`)
         .set(auth('viewer'))
         .expect(200);
 
       expect(res.body.data).toHaveLength(1);
-      expect(res.body.data[0].name).toBe('Qwerty Gadget');
+      expect(res.body.data[0]).toMatchObject({ name: 'Qwerty Gadget', categoryId });
+    });
+
+    it('returns 400 when categoryId is not a uuid', () => {
+      return http().get('/products?categoryId=electronics').set(auth('viewer')).expect(400);
+    });
+
+    it('lists seeded products linked to seeded categories', async () => {
+      const [products, categories] = await Promise.all([
+        http().get('/products?limit=100').set(auth('viewer')),
+        http().get('/categories?limit=100').set(auth('viewer')),
+      ]);
+      const categoryIds = new Set(categories.body.data.map((c: { id: string }) => c.id));
+      // Other tests in this file create products without a category, so only check linked ones.
+      const linked = products.body.data.filter((p: { categoryId: string | null }) => p.categoryId);
+
+      expect(linked.length).toBeGreaterThanOrEqual(30);
+      expect(linked.every((p: { categoryId: string }) => categoryIds.has(p.categoryId))).toBe(true);
     });
 
     it('returns 400 for an invalid status', () => {
@@ -92,7 +120,7 @@ describe('Products (e2e)', () => {
         name: 'Wireless Mouse',
         price: 29.99,
         stock: 0,
-        category: 'Uncategorized',
+        categoryId: null,
         status: 'active',
       });
     });
@@ -103,6 +131,9 @@ describe('Products (e2e)', () => {
       ['a negative stock', { price: 10, stock: -1 }],
       ['an unknown status', { price: 10, status: 'sold' }],
       ['an invalid image url', { price: 10, imageUrl: 'not-a-url' }],
+      ['a categoryId that is not a uuid', { price: 10, categoryId: 'electronics' }],
+      ['an unknown categoryId', { price: 10, categoryId: '11111111-1111-4111-8111-111111111111' }],
+      ['the removed category field', { price: 10, category: 'Electronics' }],
     ])('returns 400 for %s', (_label, body) => {
       return http()
         .post('/products')
@@ -138,6 +169,25 @@ describe('Products (e2e)', () => {
         .expect(200);
 
       expect(res.body).toMatchObject({ name: 'Wireless Mouse', stock: 50 });
+    });
+
+    it('changes and removes the category', async () => {
+      const categoryId = await createCategory();
+      const product = await createProduct();
+
+      const assigned = await http()
+        .patch(`/products/${product.id}`)
+        .set(auth('user'))
+        .send({ categoryId })
+        .expect(200);
+      expect(assigned.body.categoryId).toBe(categoryId);
+
+      const removed = await http()
+        .patch(`/products/${product.id}`)
+        .set(auth('user'))
+        .send({ categoryId: null })
+        .expect(200);
+      expect(removed.body.categoryId).toBeNull();
     });
 
     it('returns 409 when updating to a SKU of another product', async () => {

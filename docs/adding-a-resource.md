@@ -6,4 +6,7 @@
 4. Create service + controller following the existing customers/products pattern.
 5. Register everything in a new module and import it in `AppModule`.
 6. Inject the new repository into `SeedService` and add a seed method.
-7. Document the new module and its endpoints in [features.md](features.md).
+7. Add unit tests (`*.spec.ts` next to the service and repository) and e2e tests (`test/<resource>.e2e-spec.ts`).
+8. Document the new module and its endpoints in [features.md](features.md).
+
+If two modules need each other's providers (e.g. `products` and `categories`), import each one with `forwardRef(() => OtherModule)`. See [architecture.md](architecture.md).
