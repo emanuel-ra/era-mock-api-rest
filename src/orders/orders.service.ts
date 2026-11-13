@@ -1,6 +1,7 @@
 import {
   BadRequestException,
   ConflictException,
+  HttpStatus,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
@@ -8,6 +9,7 @@ import { paginate, PaginatedResult } from '../core/dto/pagination.dto';
 import { toCents } from '../core/utils/money';
 import { sortItems } from '../core/utils/sort';
 import { CustomersRepository } from '../customers/customers.repository';
+import { applyStockDelta } from '../products/product-stock';
 import { ProductsRepository } from '../products/products.repository';
 import { CreateOrderDto, OrderItemDto } from './dto/create-order.dto';
 import { FilterOrdersDto } from './dto/filter-orders.dto';
@@ -20,6 +22,14 @@ import {
   OrderStatus,
 } from './entities/order.entity';
 import { OrdersRepository } from './orders.repository';
+
+/** One product without enough stock, listed in the 409 body when paying an order. */
+export interface StockShortage {
+  productId: string;
+  productName: string;
+  requested: number;
+  available: number;
+}
 
 @Injectable()
 export class OrdersService {
@@ -80,6 +90,11 @@ export class OrdersService {
       throw new ConflictException(`Cannot change order status from ${order.status} to ${dto.status}`);
     }
 
+    if (dto.status === OrderStatus.Paid) this.takeStock(order.items);
+    if (order.status === OrderStatus.Paid && dto.status === OrderStatus.Cancelled) {
+      this.returnStock(order.items);
+    }
+
     return this.repo.update(id, { status: dto.status })!;
   }
 
@@ -106,6 +121,48 @@ export class OrdersService {
         subtotal: toCents(product.price * quantity),
       };
     });
+  }
+
+  /**
+   * Takes each line's quantity out of its product's stock. Every line is checked
+   * before any product changes, so a shortage leaves all stock untouched.
+   * Products deleted since the order was created are skipped.
+   */
+  private takeStock(items: OrderItem[]): void {
+    const lines = items.flatMap((item) => {
+      const product = this.productsRepo.findById(item.productId);
+      return product ? [{ item, product }] : [];
+    });
+
+    const missing: StockShortage[] = lines
+      .filter(({ item, product }) => product.stock < item.quantity)
+      .map(({ item, product }) => ({
+        productId: product.id,
+        productName: product.name,
+        requested: item.quantity,
+        available: product.stock,
+      }));
+
+    if (missing.length > 0) {
+      throw new ConflictException({
+        statusCode: HttpStatus.CONFLICT,
+        error: 'Conflict',
+        message: `Insufficient stock for: ${missing.map((m) => m.productName).join(', ')}`,
+        missing,
+      });
+    }
+
+    for (const { item, product } of lines) {
+      this.productsRepo.update(product.id, applyStockDelta(product, -item.quantity));
+    }
+  }
+
+  /** Puts each line's quantity back into its product's stock, skipping deleted products. */
+  private returnStock(items: OrderItem[]): void {
+    for (const item of items) {
+      const product = this.productsRepo.findById(item.productId);
+      if (product) this.productsRepo.update(product.id, applyStockDelta(product, item.quantity));
+    }
   }
 
   private sumTotal(items: OrderItem[]): number {

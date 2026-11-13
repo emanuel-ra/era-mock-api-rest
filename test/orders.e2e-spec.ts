@@ -21,14 +21,17 @@ describe('Orders (e2e)', () => {
     return res.body.id;
   }
 
-  async function createProduct(price: number): Promise<string> {
+  async function createProduct(price: number, extra: Record<string, unknown> = {}): Promise<string> {
     const res = await http()
       .post('/products')
       .set(auth('admin'))
-      .send({ name: `Order Product ${++counter}`, price })
+      .send({ name: `Order Product ${++counter}`, price, stock: 100, ...extra })
       .expect(201);
     return res.body.id;
   }
+
+  const getProduct = async (id: string) =>
+    (await http().get(`/products/${id}`).set(auth('viewer')).expect(200)).body;
 
   async function createOrder(body: Record<string, unknown> = {}) {
     const customerId = body.customerId ?? (await createCustomer());
@@ -250,6 +253,68 @@ describe('Orders (e2e)', () => {
 
       await http().delete(`/orders/${order.id}`).set(auth('admin')).expect(204);
       await http().get(`/orders/${order.id}`).set(auth('admin')).expect(404);
+    });
+  });
+
+  describe('PATCH /orders/:id/status stock', () => {
+    it('takes stock when paid and gives it back when a paid order is cancelled', async () => {
+      const productId = await createProduct(10, { stock: 3 });
+      const order = await createOrder({ items: [{ productId, quantity: 3 }] });
+
+      await setStatus(order.id, 'paid').expect(200);
+      expect(await getProduct(productId)).toMatchObject({ stock: 0, status: 'out_of_stock' });
+
+      await setStatus(order.id, 'cancelled').expect(200);
+      expect(await getProduct(productId)).toMatchObject({ stock: 3, status: 'active' });
+    });
+
+    it('returns 409 with the missing products and changes nothing when stock is short', async () => {
+      const enough = await createProduct(10, { stock: 5 });
+      const short = await createProduct(10, { stock: 1 });
+      const order = await createOrder({
+        items: [
+          { productId: enough, quantity: 2 },
+          { productId: short, quantity: 4 },
+        ],
+      });
+
+      const res = await setStatus(order.id, 'paid').expect(409);
+
+      expect(res.body).toMatchObject({
+        statusCode: 409,
+        error: 'Conflict',
+        missing: [{ productId: short, requested: 4, available: 1 }],
+      });
+      expect(res.body.message).toContain('Insufficient stock');
+      expect((await getProduct(enough)).stock).toBe(5);
+      expect((await getProduct(short)).stock).toBe(1);
+      const after = await http().get(`/orders/${order.id}`).set(auth('viewer')).expect(200);
+      expect(after.body.status).toBe('pending');
+    });
+
+    it('ignores deleted products when paying', async () => {
+      const kept = await createProduct(10, { stock: 2 });
+      const deleted = await createProduct(10, { stock: 0 });
+      const order = await createOrder({
+        items: [
+          { productId: kept, quantity: 1 },
+          { productId: deleted, quantity: 1 },
+        ],
+      });
+      await http().delete(`/products/${deleted}`).set(auth('admin')).expect(204);
+
+      await setStatus(order.id, 'paid').expect(200);
+
+      expect((await getProduct(kept)).stock).toBe(1);
+    });
+
+    it('does not change stock when creating an order or cancelling a pending one', async () => {
+      const productId = await createProduct(10, { stock: 4 });
+      const order = await createOrder({ items: [{ productId, quantity: 2 }] });
+
+      await setStatus(order.id, 'cancelled').expect(200);
+
+      expect((await getProduct(productId)).stock).toBe(4);
     });
   });
 
