@@ -1,0 +1,24 @@
+# Rebuilt inside the image
+node_modules
+dist
+coverage
+
+# Secrets and local config: pass them as environment variables instead
+.env
+.env.*
+!.env.example
+
+# Not needed to build or run the app
+.git
+.github
+.claude
+.vscode
+test
+**/*.spec.ts
+*.md
+docs
+eslint.config.mjs
+Dockerfile
+.dockerignore
+compose.yaml
+.DS_Store

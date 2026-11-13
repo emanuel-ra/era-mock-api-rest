@@ -1,0 +1,14 @@
+# Run with: docker compose up --build
+# Values come from .env when it exists (Compose reads it automatically),
+# otherwise from the defaults below.
+services:
+  api:
+    build: .
+    image: era-mock-api-rest:local
+    ports:
+      - "${PORT:-3000}:3000"
+    environment:
+      PORT: 3000
+      JWT_SECRET: ${JWT_SECRET:-era-mock-api-secret-change-in-production}
+      JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-1h}
+    restart: unless-stopped
