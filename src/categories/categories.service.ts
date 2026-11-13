@@ -6,6 +6,7 @@ import {
 } from '@nestjs/common';
 import { paginate, PaginatedResult } from '../core/dto/pagination.dto';
 import { slugify } from '../core/utils/slugify';
+import { ProductsRepository } from '../products/products.repository';
 import { CategoriesRepository } from './categories.repository';
 import { CreateCategoryDto } from './dto/create-category.dto';
 import { FilterCategoriesDto } from './dto/filter-categories.dto';
@@ -14,7 +15,10 @@ import { CategoryEntity } from './entities/category.entity';
 
 @Injectable()
 export class CategoriesService {
-  constructor(private readonly repo: CategoriesRepository) {}
+  constructor(
+    private readonly repo: CategoriesRepository,
+    private readonly productsRepo: ProductsRepository,
+  ) {}
 
   findAll(filters: FilterCategoriesDto): PaginatedResult<CategoryEntity> {
     const { page, limit, ...rest } = filters;
@@ -52,7 +56,15 @@ export class CategoriesService {
   }
 
   remove(id: string): void {
-    if (!this.repo.delete(id)) throw new NotFoundException(`Category "${id}" not found`);
+    this.repo.findByIdOrFail(id);
+
+    // Deleting it would leave products pointing to a category that no longer exists.
+    const inUse = this.productsRepo.countByCategory(id);
+    if (inUse > 0) {
+      throw new ConflictException(`Category "${id}" is used by ${inUse} product(s)`);
+    }
+
+    this.repo.delete(id);
   }
 
   private assertNameIsFree(name: string, currentId?: string): void {

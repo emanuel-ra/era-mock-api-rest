@@ -127,6 +127,18 @@ describe('Categories (e2e)', () => {
       expect(res.body.slug).toBe(category.slug);
     });
 
+    it('returns 409 when deleting a category that products use', async () => {
+      const category = await createCategory();
+      await http()
+        .post('/products')
+        .set(auth('admin'))
+        .send({ name: 'Linked Product', price: 10, categoryId: category.id })
+        .expect(201);
+
+      await http().delete(`/categories/${category.id}`).set(auth('admin')).expect(409);
+      await http().get(`/categories/${category.id}`).set(auth('admin')).expect(200);
+    });
+
     it('deletes an unused category as admin with 204', async () => {
       const category = await createCategory();
 

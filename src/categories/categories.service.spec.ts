@@ -1,5 +1,7 @@
 import { BadRequestException, ConflictException, NotFoundException } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
+import { ProductStatus } from '../products/entities/product.entity';
+import { ProductsRepository } from '../products/products.repository';
 import { CategoriesRepository } from './categories.repository';
 import { CategoriesService } from './categories.service';
 import { CreateCategoryDto } from './dto/create-category.dto';
@@ -7,6 +9,7 @@ import { CreateCategoryDto } from './dto/create-category.dto';
 describe('CategoriesService', () => {
   let service: CategoriesService;
   let repo: CategoriesRepository;
+  let productsRepo: ProductsRepository;
 
   const dto = (overrides: Partial<CreateCategoryDto> = {}): CreateCategoryDto => ({
     name: 'Home & Garden',
@@ -15,11 +18,12 @@ describe('CategoriesService', () => {
 
   beforeEach(async () => {
     const moduleRef = await Test.createTestingModule({
-      providers: [CategoriesService, CategoriesRepository],
+      providers: [CategoriesService, CategoriesRepository, ProductsRepository],
     }).compile();
 
     service = moduleRef.get(CategoriesService);
     repo = moduleRef.get(CategoriesRepository);
+    productsRepo = moduleRef.get(ProductsRepository);
   });
 
   describe('create', () => {
@@ -126,6 +130,23 @@ describe('CategoriesService', () => {
 
     it('throws NotFoundException for an unknown id', () => {
       expect(() => service.remove('missing')).toThrow(NotFoundException);
+    });
+
+    it('rejects deleting a category that products still use', () => {
+      const created = service.create(dto());
+      productsRepo.create({
+        name: 'Shovel',
+        description: '',
+        price: 10,
+        sku: '',
+        stock: 1,
+        categoryId: created.id,
+        status: ProductStatus.Active,
+        imageUrl: '',
+      });
+
+      expect(() => service.remove(created.id)).toThrow(ConflictException);
+      expect(repo.findById(created.id)).toBeDefined();
     });
   });
 });
