@@ -14,6 +14,7 @@ npm test             # Jest unit tests (src/**/*.spec.ts)
 npm run test:watch   # unit tests in watch mode
 npm run test:cov     # unit tests with coverage report (output: coverage/)
 npm run test:e2e     # e2e tests over HTTP (test/**/*.e2e-spec.ts)
+npm run test:all:report   # unit + e2e with JSON and HTML reports (output: reports/)
 npx jest src/customers   # run a single folder or file
 docker compose up --build   # run the API in Docker (port from .env PORT, default 3000)
 ```
@@ -55,4 +56,8 @@ Git flow: `dev` is the default and integration branch; `main` only receives rele
 - `/finish-work`: after the merge, removes the worktree and local branch and updates `dev`.
 - `/release`: PR from `dev` into `main` with a changelog.
 
-The `.claude/hooks/protect-branches.sh` hook blocks editing files or committing in any checkout that is on `main` or `dev`.
+The `.claude/hooks/protect-branches.sh` hook blocks editing files or committing in any checkout that is on `main` or `dev`. The `.claude/hooks/related-tests.sh` hook runs `jest --findRelatedTests` after every edit of a `.ts` file and reports failures back to Claude.
+
+Subagents in `.claude/agents/`:
+
+- `test-runner`: runs `npm run test:all:report`, re-runs failures to spot flaky tests, classifies each failure's cause and writes `reports/diagnostico-<date>.html`. It only writes inside `reports/` (gitignored).
