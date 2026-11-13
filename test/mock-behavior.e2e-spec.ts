@@ -28,7 +28,7 @@ describe('Mock latency and errors (e2e)', () => {
     expect(Date.now() - start).toBeGreaterThanOrEqual(290);
   });
 
-  it('responds the x-mock-status code with the Nest error format', async () => {
+  it('responds the x-mock-status code with the standard error format', async () => {
     const res = await http()
       .get('/customers')
       .set('Authorization', `Bearer ${token}`)
@@ -39,6 +39,9 @@ describe('Mock latency and errors (e2e)', () => {
       statusCode: 503,
       error: 'Service Unavailable',
       message: 'Simulated error (x-mock-status)',
+      path: '/customers',
+      timestamp: expect.any(String),
+      requestId: res.headers['x-request-id'],
     });
   });
 
