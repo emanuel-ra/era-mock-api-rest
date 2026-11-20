@@ -43,4 +43,19 @@ describe('Seed (e2e)', () => {
     // Seeded users keep fixed ids, so a token issued before the reset still works.
     await http().get('/auth/me').set('Authorization', `Bearer ${token}`).expect(200);
   });
+
+  it('POST /seed/reset drops every refresh token', async () => {
+    const login = await http()
+      .post('/auth/login')
+      .send({ email: 'admin@mock.dev', password: 'password123' })
+      .expect(201);
+
+    await http().post('/seed/reset').expect(200);
+
+    const res = await http()
+      .post('/auth/refresh')
+      .send({ refreshToken: login.body.refreshToken })
+      .expect(401);
+    expect(res.body.message).toBe('Invalid refresh token');
+  });
 });

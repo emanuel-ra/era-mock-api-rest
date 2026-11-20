@@ -41,10 +41,18 @@ Login and identity of the current user. Three users are seeded (see [seed-data.m
 
 | Method | Route | Access | Description |
 |--------|-------|--------|-------------|
-| POST | `/auth/login` | Public | Validates `email` + `password` and returns `{ accessToken, user: { id, email, name, role } }`. Invalid credentials return `401`. |
+| POST | `/auth/login` | Public | Validates `email` + `password` and returns `{ accessToken, refreshToken, user: { id, email, name, role } }`. Invalid credentials return `401`. |
+| POST | `/auth/refresh` | Public | Exchanges `{ refreshToken }` (required, non-empty string) for a new `{ accessToken, refreshToken, user }` with `200`; the token sent stops working. `401` with `message: "Invalid refresh token"` if it is unknown, expired, already used or its user no longer exists. |
 | GET | `/auth/me` | JWT (any role) | Returns the authenticated user without the password. |
 
 Tokens are rejected if their user no longer exists, and the role is read from the stored user on every request, so a role change applies to existing tokens at once.
+
+Refresh tokens:
+
+- Opaque random strings (not JWTs) kept in memory. They last `JWT_REFRESH_EXPIRES_IN` (default `7d`, same format as `JWT_EXPIRES_IN`) and are dropped by a restart or `POST /seed/reset`, so the client must log in again.
+- Strict rotation: each refresh token works once. Two parallel refreshes with the same token → the first gets the new pair, the second `401`. Run a single refresh at a time in the client and let other requests wait for it.
+- A new access token from a refresh carries the user's current role.
+- Consumer notes: do not try to refresh after a `401` from `/auth/refresh` itself (log in again instead), and do not treat a `500` from it (e.g. from `MOCK_ERROR_RATE`) as a logout. `x-mock-status` on `/auth/refresh` skips the handler, so the token is not consumed.
 
 ## Users
 
