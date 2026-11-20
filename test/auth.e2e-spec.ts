@@ -183,6 +183,77 @@ describe('Auth (e2e)', () => {
     });
   });
 
+  describe('POST /auth/logout', () => {
+    const logout = (refreshToken: unknown) => http().post('/auth/logout').send({ refreshToken });
+    const refresh = (refreshToken: string) => http().post('/auth/refresh').send({ refreshToken });
+
+    it('answers 204 without an Authorization header and invalidates the refresh token', async () => {
+      const { refreshToken } = await loginPair();
+
+      const res = await logout(refreshToken).expect(204);
+
+      expect(res.body).toEqual({});
+      const refreshRes = await refresh(refreshToken).expect(401);
+      expect(refreshRes.body.message).toBe('Invalid refresh token');
+    });
+
+    it('answers 204 for an unknown refresh token', async () => {
+      await logout('not-a-real-refresh-token').expect(204);
+    });
+
+    it('answers 204 for a refresh token that was already used', async () => {
+      const { refreshToken } = await loginPair();
+      await refresh(refreshToken).expect(200);
+
+      await logout(refreshToken).expect(204);
+    });
+
+    it('answers 204 twice for the same refresh token', async () => {
+      const { refreshToken } = await loginPair();
+
+      await logout(refreshToken).expect(204);
+      await logout(refreshToken).expect(204);
+    });
+
+    it('answers 204 for an expired refresh token', async () => {
+      const { refreshToken } = await loginPair();
+      const repo = app.get(RefreshTokensRepository);
+      const stored = repo.findByToken(refreshToken)!;
+      repo.update(stored.id, { expiresAt: new Date(Date.now() - 1000) });
+
+      await logout(refreshToken).expect(204);
+    });
+
+    it.each([
+      ['a missing refreshToken', {}],
+      ['an empty refreshToken', { refreshToken: '' }],
+      ['a non-string refreshToken', { refreshToken: 123 }],
+      ['extra fields', { refreshToken: 'abc', extra: true }],
+    ])('returns 400 with the validation messages for %s', async (_case, body) => {
+      const res = await http().post('/auth/logout').send(body).expect(400);
+
+      expect(res.body.message).toEqual(expect.any(Array));
+      expect(res.body.message.length).toBeGreaterThan(0);
+    });
+
+    it('keeps the other session of the same user working', async () => {
+      const first = await loginPair();
+      const second = await loginPair();
+
+      await logout(first.refreshToken).expect(204);
+
+      await refresh(second.refreshToken).expect(200);
+    });
+
+    it('does not revoke the access token issued before the logout', async () => {
+      const { accessToken, refreshToken } = await loginPair();
+
+      await logout(refreshToken).expect(204);
+
+      await http().get('/auth/me').set('Authorization', `Bearer ${accessToken}`).expect(200);
+    });
+  });
+
   describe('GET /auth/me', () => {
     it('returns the current user without the password', async () => {
       const token = await login(app, 'viewer');
