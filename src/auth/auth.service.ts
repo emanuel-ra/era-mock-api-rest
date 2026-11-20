@@ -1,7 +1,7 @@
 import { Inject, Injectable, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcryptjs';
-import { randomBytes } from 'crypto';
+import { randomBytes, randomUUID } from 'crypto';
 import { UsersRepository } from './repositories/users.repository';
 import { RefreshTokensRepository } from './repositories/refresh-tokens.repository';
 import { LoginDto } from './dto/login.dto';
@@ -32,37 +32,43 @@ export class AuthService {
   }
 
   /**
-   * Strict rotation: the refresh token is consumed and a new access + refresh
-   * pair is issued. Unknown, expired or already used tokens, and tokens whose
-   * user was deleted, all fail with the same 401.
+   * Strict rotation with reuse detection: the refresh token is marked as
+   * rotated and a new access + refresh pair of the same family is issued.
+   * A rotated token that comes back means it leaked (or two refreshes raced),
+   * so its whole family is revoked. Unknown, expired or reused tokens, and
+   * tokens whose user was deleted, all fail with the same 401.
    */
   refresh(token: string): AuthResponseDto {
     const stored = this.refreshTokensRepository.findByToken(token);
     if (!stored) throw new UnauthorizedException(INVALID_REFRESH_TOKEN);
 
-    // Consumed in every case: a valid token is rotated, and an expired token
-    // or one whose user is gone is deleted lazily here.
-    this.refreshTokensRepository.delete(stored.id);
-
-    if (stored.expiresAt.getTime() <= Date.now()) {
+    // Reuse, expiry and a deleted user end the session: the family is deleted,
+    // which also cleans up its rotated tokens.
+    if (stored.rotatedAt || stored.expiresAt.getTime() <= Date.now()) {
+      this.refreshTokensRepository.deleteFamily(stored.familyId);
       throw new UnauthorizedException(INVALID_REFRESH_TOKEN);
     }
 
     // Read the user again so the new access token carries the current role.
     const user = this.usersRepository.findById(stored.userId);
-    if (!user) throw new UnauthorizedException(INVALID_REFRESH_TOKEN);
+    if (!user) {
+      this.refreshTokensRepository.deleteFamily(stored.familyId);
+      throw new UnauthorizedException(INVALID_REFRESH_TOKEN);
+    }
 
-    return this.buildResponse(user);
+    // Kept (not deleted) so a later reuse can be detected.
+    this.refreshTokensRepository.update(stored.id, { rotatedAt: new Date() });
+    return this.buildResponse(user, stored.familyId);
   }
 
   /**
-   * Deletes the refresh token if it exists. Idempotent: unknown, expired or
-   * already used tokens are ignored. Access tokens are not revoked; they stay
-   * valid until they expire.
+   * Revokes the whole family (session) of the refresh token, whether it is the
+   * current token or an already rotated one. Idempotent: unknown tokens are
+   * ignored. Access tokens are not revoked; they stay valid until they expire.
    */
   logout(token: string): void {
     const stored = this.refreshTokensRepository.findByToken(token);
-    if (stored) this.refreshTokensRepository.delete(stored.id);
+    if (stored) this.refreshTokensRepository.deleteFamily(stored.familyId);
   }
 
   getMe(userId: string): Omit<UserEntity, 'password'> {
@@ -71,21 +77,24 @@ export class AuthService {
     return safe;
   }
 
-  private buildResponse(user: UserEntity): AuthResponseDto {
+  /** A login starts a new family; a refresh passes the family it continues. */
+  private buildResponse(user: UserEntity, familyId: string = randomUUID()): AuthResponseDto {
     const payload = { sub: user.id, email: user.email, role: user.role };
     return {
       accessToken: this.jwtService.sign(payload),
-      refreshToken: this.issueRefreshToken(user.id),
+      refreshToken: this.issueRefreshToken(user.id, familyId),
       user: { id: user.id, email: user.email, name: user.name, role: user.role },
     };
   }
 
-  private issueRefreshToken(userId: string): string {
+  private issueRefreshToken(userId: string, familyId: string): string {
     const token = randomBytes(32).toString('base64url');
     this.refreshTokensRepository.create({
       token,
       userId,
       expiresAt: new Date(Date.now() + this.refreshTokenTtlMs),
+      familyId,
+      rotatedAt: null,
     });
     return token;
   }

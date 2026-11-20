@@ -42,8 +42,8 @@ Login and identity of the current user. Three users are seeded (see [seed-data.m
 | Method | Route | Access | Description |
 |--------|-------|--------|-------------|
 | POST | `/auth/login` | Public | Validates `email` + `password` and returns `{ accessToken, refreshToken, user: { id, email, name, role } }`. Invalid credentials return `401`. |
-| POST | `/auth/refresh` | Public | Exchanges `{ refreshToken }` (required, non-empty string) for a new `{ accessToken, refreshToken, user }` with `200`; the token sent stops working. `401` with `message: "Invalid refresh token"` if it is unknown, expired, already used or its user no longer exists. |
-| POST | `/auth/logout` | Public | Invalidates `{ refreshToken }` (required, non-empty string) so it can no longer be refreshed. Always `204`, even if the token is unknown, expired or already used. Other sessions of the same user keep working. |
+| POST | `/auth/refresh` | Public | Exchanges `{ refreshToken }` (required, non-empty string) for a new `{ accessToken, refreshToken, user }` with `200`; the token sent stops working. `401` with `message: "Invalid refresh token"` if it is unknown, expired, already used or its user no longer exists. Reusing an already used token also revokes its whole session (see *Reuse detection* below). |
+| POST | `/auth/logout` | Public | Revokes the session of `{ refreshToken }` (required, non-empty string): that token and every other refresh token of the same login stop working. Always `204`, even if the token is unknown, expired or already used. Other sessions of the same user keep working. |
 | GET | `/auth/me` | JWT (any role) | Returns the authenticated user without the password. |
 
 Logout does not revoke access tokens: one issued before the logout keeps working until it expires (`JWT_EXPIRES_IN`), so the client must discard it.
@@ -53,7 +53,9 @@ Tokens are rejected if their user no longer exists, and the role is read from th
 Refresh tokens:
 
 - Opaque random strings (not JWTs) kept in memory. They last `JWT_REFRESH_EXPIRES_IN` (default `7d`, same format as `JWT_EXPIRES_IN`) and are dropped by a restart or `POST /seed/reset`, so the client must log in again.
-- Strict rotation: each refresh token works once. Two parallel refreshes with the same token → the first gets the new pair, the second `401`. Run a single refresh at a time in the client and let other requests wait for it.
+- Strict rotation: each refresh token works once.
+- Reuse detection: every login starts a session (a token *family*) and each refresh continues it. Sending a token that was already exchanged is treated as theft: it answers `401` and revokes the whole session, so the newest token of that login stops working too and the user must log in again. Other sessions (other logins) are not affected.
+- Parallel refreshes: two refreshes with the same token → the first gets the new pair, the second `401`, and that `401` revokes the session, including the pair the first call just returned. Run a single refresh at a time in the client and let other requests wait for it.
 - A new access token from a refresh carries the user's current role.
 - Consumer notes: do not try to refresh after a `401` from `/auth/refresh` itself (log in again instead), and do not treat a `500` from it (e.g. from `MOCK_ERROR_RATE`) as a logout. `x-mock-status` on `/auth/refresh` skips the handler, so the token is not consumed.
 

@@ -109,7 +109,8 @@ describe('AuthService', () => {
   describe('refresh', () => {
     const login = () => service.login({ email: 'admin@mock.dev', password: 'password123' });
 
-    it('rotates the refresh token and returns a new pair', async () => {
+    it('rotates the refresh token and returns a new pair of the same family', async () => {
+      jest.useFakeTimers({ now: new Date('2026-11-20T10:00:00.000Z') });
       const { refreshToken } = await login();
 
       const result = service.refresh(refreshToken);
@@ -117,16 +118,48 @@ describe('AuthService', () => {
       expect(result.accessToken).toBe('signed-token');
       expect(result.refreshToken).not.toBe(refreshToken);
       expect(result.user).toEqual({ id: 'user-1', email: 'admin@mock.dev', name: 'Admin User', role: Role.Admin });
-      expect(refreshRepo.findByToken(refreshToken)).toBeUndefined();
-      expect(refreshRepo.findByToken(result.refreshToken)).toBeDefined();
-      expect(refreshRepo.count()).toBe(1);
+      const old = refreshRepo.findByToken(refreshToken)!;
+      const next = refreshRepo.findByToken(result.refreshToken)!;
+      expect(old.rotatedAt).toEqual(new Date('2026-11-20T10:00:00.000Z'));
+      expect(next.rotatedAt).toBeNull();
+      expect(next.familyId).toBe(old.familyId);
     });
 
-    it('rejects a token that was already used', async () => {
-      const { refreshToken } = await login();
-      service.refresh(refreshToken);
+    it('starts a new family on each login', async () => {
+      const a = await login();
+      const b = await login();
 
-      expect(() => service.refresh(refreshToken)).toThrow(new UnauthorizedException(INVALID_REFRESH_TOKEN));
+      expect(refreshRepo.findByToken(a.refreshToken)!.familyId).not.toBe(
+        refreshRepo.findByToken(b.refreshToken)!.familyId,
+      );
+    });
+
+    it('rejects a reused token and revokes its whole family', async () => {
+      const { refreshToken: r1 } = await login();
+      const { refreshToken: r2 } = service.refresh(r1);
+
+      expect(() => service.refresh(r1)).toThrow(new UnauthorizedException(INVALID_REFRESH_TOKEN));
+      expect(refreshRepo.count()).toBe(0);
+      expect(() => service.refresh(r2)).toThrow(new UnauthorizedException(INVALID_REFRESH_TOKEN));
+    });
+
+    it('revokes the family when any older token of it is reused', async () => {
+      const { refreshToken: r1 } = await login();
+      const { refreshToken: r2 } = service.refresh(r1);
+      const { refreshToken: r3 } = service.refresh(r2);
+
+      expect(() => service.refresh(r1)).toThrow(new UnauthorizedException(INVALID_REFRESH_TOKEN));
+      expect(refreshRepo.findByToken(r3)).toBeUndefined();
+    });
+
+    it('keeps other families working when one is revoked', async () => {
+      const first = await login();
+      const second = await login();
+      service.refresh(first.refreshToken);
+
+      expect(() => service.refresh(first.refreshToken)).toThrow(UnauthorizedException);
+
+      expect(service.refresh(second.refreshToken).refreshToken).toEqual(expect.any(String));
     });
 
     it('rejects an unknown token', () => {
@@ -188,12 +221,23 @@ describe('AuthService', () => {
       expect(() => service.logout('unknown')).not.toThrow();
     });
 
-    it('ignores a token that was already used', async () => {
-      const { refreshToken } = await login();
-      service.refresh(refreshToken);
+    it('revokes the whole family, including tokens issued by refreshes', async () => {
+      const { refreshToken: r1 } = await login();
+      const { refreshToken: r2 } = service.refresh(r1);
 
-      expect(() => service.logout(refreshToken)).not.toThrow();
-      expect(refreshRepo.count()).toBe(1);
+      service.logout(r2);
+
+      expect(refreshRepo.count()).toBe(0);
+      expect(() => service.refresh(r1)).toThrow(new UnauthorizedException(INVALID_REFRESH_TOKEN));
+      expect(() => service.refresh(r2)).toThrow(new UnauthorizedException(INVALID_REFRESH_TOKEN));
+    });
+
+    it('revokes the family when given an already rotated token', async () => {
+      const { refreshToken: r1 } = await login();
+      service.refresh(r1);
+
+      expect(() => service.logout(r1)).not.toThrow();
+      expect(refreshRepo.count()).toBe(0);
     });
 
     it('keeps the other sessions of the same user', async () => {
