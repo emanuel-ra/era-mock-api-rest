@@ -19,9 +19,10 @@ Working rules in `.claude/rules/` are loaded automatically: git workflow and bra
 
 ## Skills
 
-Skills in `.claude/skills/` run the git flow (`dev` integration branch, one worktree and PR per unit of work):
+Skills in `.claude/skills/` plan features and run the git flow (`dev` integration branch, one worktree and PR per unit of work):
 
-- `/start-work`: worktree from `origin/dev` → implement → verify → review → PR into `dev`.
+- `/plan-feature [#issue]`: product-owner style planning before any code: discovery, challenge, user stories with acceptance criteria, technical tasks; after approval publishes an `epic` issue (the spec) with `story` sub-issues. With an issue number it refines that issue. Writes no repo files, so it runs from the main checkout.
+- `/start-work`: worktree from `origin/dev` → implement → verify → review → PR into `dev`. Given a story issue (`/start-work #43`) it takes the requirements from it, saves the epic spec to `docs/specs/<slug>.md` and closes the issue with the PR.
 - `/finish-work`: after the merge, removes the worktree and local branch and updates `dev`.
 - `/release`: PR from `dev` into `main` with a changelog; runs `/audit-docs` first and stops on FAIL.
 - `/audit-docs [files] [low]`: audits `README.md`, `AGENTS.md`, `CLAUDE.md`, `.github/copilot-instructions.md` and `docs/*.md` (or the given files) with one `doc-auditor` per file in parallel; shows high/medium findings and PASS/FAIL in the chat, without writing files.
