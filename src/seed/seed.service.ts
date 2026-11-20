@@ -1,6 +1,7 @@
 import { Injectable, OnModuleInit } from '@nestjs/common';
 import { faker } from '@faker-js/faker';
 import * as bcrypt from 'bcryptjs';
+import { RefreshTokensRepository } from '../auth/repositories/refresh-tokens.repository';
 import { UsersRepository } from '../auth/repositories/users.repository';
 import { CategoriesRepository } from '../categories/categories.repository';
 import { toCents } from '../core/utils/money';
@@ -35,6 +36,7 @@ export class SeedService implements OnModuleInit {
     private readonly customersRepo: CustomersRepository,
     private readonly productsRepo: ProductsRepository,
     private readonly ordersRepo: OrdersRepository,
+    private readonly refreshTokensRepo: RefreshTokensRepository,
   ) {}
 
   async onModuleInit() {
@@ -47,6 +49,8 @@ export class SeedService implements OnModuleInit {
     this.customersRepo.clear();
     this.productsRepo.clear();
     this.ordersRepo.clear();
+    // Every session ends: clients must log in again after a reset.
+    this.refreshTokensRepo.clear();
     await this.seed();
   }
 

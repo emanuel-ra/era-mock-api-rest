@@ -10,5 +10,9 @@ export class AuthUserDto {
 
 export class AuthResponseDto {
   @ApiProperty() accessToken: string;
+  @ApiProperty({
+    description: 'Opaque token for POST /auth/refresh. Single use: each refresh returns a new one.',
+  })
+  refreshToken: string;
   @ApiProperty() user: AuthUserDto;
 }

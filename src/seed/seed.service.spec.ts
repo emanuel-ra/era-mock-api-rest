@@ -1,5 +1,6 @@
 import { Test } from '@nestjs/testing';
 import * as bcrypt from 'bcryptjs';
+import { RefreshTokensRepository } from '../auth/repositories/refresh-tokens.repository';
 import { UsersRepository } from '../auth/repositories/users.repository';
 import { CategoriesRepository } from '../categories/categories.repository';
 import { Role } from '../core/decorators/roles.decorator';
@@ -16,6 +17,7 @@ describe('SeedService', () => {
   let categoriesRepo: CategoriesRepository;
   let productsRepo: ProductsRepository;
   let ordersRepo: OrdersRepository;
+  let refreshTokensRepo: RefreshTokensRepository;
 
   beforeEach(async () => {
     const moduleRef = await Test.createTestingModule({
@@ -26,6 +28,7 @@ describe('SeedService', () => {
         CustomersRepository,
         ProductsRepository,
         OrdersRepository,
+        RefreshTokensRepository,
       ],
     }).compile();
 
@@ -35,6 +38,7 @@ describe('SeedService', () => {
     categoriesRepo = moduleRef.get(CategoriesRepository);
     productsRepo = moduleRef.get(ProductsRepository);
     ordersRepo = moduleRef.get(OrdersRepository);
+    refreshTokensRepo = moduleRef.get(RefreshTokensRepository);
 
     // compile() does not run lifecycle hooks; call it like Nest does on boot.
     await service.onModuleInit();
@@ -119,5 +123,17 @@ describe('SeedService', () => {
     expect(service.status()).toEqual({ users: 3, categories: 7, customers: 30, products: 30, orders: 20 });
     expect(customersRepo.findByEmail('extra@example.com')).toBeUndefined();
     expect(usersRepo.findById('00000000-0000-4000-8000-000000000001')).toBeDefined();
+  });
+
+  it('reset drops every refresh token', async () => {
+    refreshTokensRepo.create({
+      token: 'some-token',
+      userId: '00000000-0000-4000-8000-000000000001',
+      expiresAt: new Date(Date.now() + 60_000),
+    });
+
+    await service.reset();
+
+    expect(refreshTokensRepo.count()).toBe(0);
   });
 });
