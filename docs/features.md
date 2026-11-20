@@ -43,7 +43,10 @@ Login and identity of the current user. Three users are seeded (see [seed-data.m
 |--------|-------|--------|-------------|
 | POST | `/auth/login` | Public | Validates `email` + `password` and returns `{ accessToken, refreshToken, user: { id, email, name, role } }`. Invalid credentials return `401`. |
 | POST | `/auth/refresh` | Public | Exchanges `{ refreshToken }` (required, non-empty string) for a new `{ accessToken, refreshToken, user }` with `200`; the token sent stops working. `401` with `message: "Invalid refresh token"` if it is unknown, expired, already used or its user no longer exists. |
+| POST | `/auth/logout` | Public | Invalidates `{ refreshToken }` (required, non-empty string) so it can no longer be refreshed. Always `204`, even if the token is unknown, expired or already used. Other sessions of the same user keep working. |
 | GET | `/auth/me` | JWT (any role) | Returns the authenticated user without the password. |
+
+Logout does not revoke access tokens: one issued before the logout keeps working until it expires (`JWT_EXPIRES_IN`), so the client must discard it.
 
 Tokens are rejected if their user no longer exists, and the role is read from the stored user on every request, so a role change applies to existing tokens at once.
 

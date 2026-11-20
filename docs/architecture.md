@@ -14,7 +14,7 @@ NestJS REST API that runs entirely **in memory** — no database. All data is lo
 
 | Module | Routes | Auth |
 |--------|--------|------|
-| `AuthModule` | `POST /auth/login`, `POST /auth/refresh`, `GET /auth/me` | login and refresh are public; `/me` requires JWT |
+| `AuthModule` | `POST /auth/login`, `POST /auth/refresh`, `POST /auth/logout`, `GET /auth/me` | login, refresh and logout are public; `/me` requires JWT |
 | `UsersModule` | `GET/POST /users`, `GET/PATCH/DELETE /users/:id` | JWT required; Admin-only |
 | `CategoriesModule` | `GET/POST /categories`, `GET/PATCH/DELETE /categories/:id` | JWT required; POST/PATCH need Admin or User; DELETE is Admin-only |
 | `CustomersModule` | `GET/POST /customers`, `GET/PATCH/DELETE /customers/:id` | JWT required; POST/PATCH need Admin or User; DELETE is Admin-only |
@@ -40,7 +40,7 @@ JWT is issued by `AuthService.login`. The strategy (`JwtStrategy`) extracts `{ i
 
 Roles enum: `admin`, `user`, `viewer` (defined in [src/core/decorators/roles.decorator.ts](../src/core/decorators/roles.decorator.ts)).
 
-Refresh tokens are not JWTs: `AuthService` issues an opaque random string (`crypto.randomBytes(32)`, base64url) on every login and refresh, and stores it in `RefreshTokensRepository` (an `InMemoryRepository<RefreshTokenEntity>` with `token`, `userId` and `expiresAt`, exported by `AuthModule`). `AuthService.refresh()` deletes the token it receives before anything else (strict rotation; expired tokens and tokens of deleted users are removed lazily this way), then reads the user from `UsersRepository` so the new access token carries the current role. The lifetime comes from `JWT_REFRESH_EXPIRES_IN` through the `REFRESH_TOKEN_TTL_MS` provider ([src/auth/refresh-token.config.ts](../src/auth/refresh-token.config.ts)), resolved on boot, so an invalid value stops the app. `SeedService.reset()` clears the store.
+Refresh tokens are not JWTs: `AuthService` issues an opaque random string (`crypto.randomBytes(32)`, base64url) on every login and refresh, and stores it in `RefreshTokensRepository` (an `InMemoryRepository<RefreshTokenEntity>` with `token`, `userId` and `expiresAt`, exported by `AuthModule`). `AuthService.refresh()` deletes the token it receives before anything else (strict rotation; expired tokens and tokens of deleted users are removed lazily this way), then reads the user from `UsersRepository` so the new access token carries the current role. `AuthService.logout()` deletes the token if it is stored and ignores it otherwise; access tokens are never revoked. The lifetime comes from `JWT_REFRESH_EXPIRES_IN` through the `REFRESH_TOKEN_TTL_MS` provider ([src/auth/refresh-token.config.ts](../src/auth/refresh-token.config.ts)), resolved on boot, so an invalid value stops the app. `SeedService.reset()` clears the store.
 
 ## Pagination, filtering & sorting
 

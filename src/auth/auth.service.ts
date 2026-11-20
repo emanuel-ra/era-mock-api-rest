@@ -55,6 +55,16 @@ export class AuthService {
     return this.buildResponse(user);
   }
 
+  /**
+   * Deletes the refresh token if it exists. Idempotent: unknown, expired or
+   * already used tokens are ignored. Access tokens are not revoked; they stay
+   * valid until they expire.
+   */
+  logout(token: string): void {
+    const stored = this.refreshTokensRepository.findByToken(token);
+    if (stored) this.refreshTokensRepository.delete(stored.id);
+  }
+
   getMe(userId: string): Omit<UserEntity, 'password'> {
     const user = this.usersRepository.findByIdOrFail(userId);
     const { password: _, ...safe } = user;

@@ -172,6 +172,40 @@ describe('AuthService', () => {
     });
   });
 
+  describe('logout', () => {
+    const login = () => service.login({ email: 'admin@mock.dev', password: 'password123' });
+
+    it('deletes the refresh token so it can no longer be refreshed', async () => {
+      const { refreshToken } = await login();
+
+      service.logout(refreshToken);
+
+      expect(refreshRepo.findByToken(refreshToken)).toBeUndefined();
+      expect(() => service.refresh(refreshToken)).toThrow(new UnauthorizedException(INVALID_REFRESH_TOKEN));
+    });
+
+    it('ignores an unknown token', () => {
+      expect(() => service.logout('unknown')).not.toThrow();
+    });
+
+    it('ignores a token that was already used', async () => {
+      const { refreshToken } = await login();
+      service.refresh(refreshToken);
+
+      expect(() => service.logout(refreshToken)).not.toThrow();
+      expect(refreshRepo.count()).toBe(1);
+    });
+
+    it('keeps the other sessions of the same user', async () => {
+      const first = await login();
+      const second = await login();
+
+      service.logout(first.refreshToken);
+
+      expect(refreshRepo.findByToken(second.refreshToken)).toBeDefined();
+    });
+  });
+
   describe('getMe', () => {
     it('returns the user without the password', () => {
       const me = service.getMe('user-1');

@@ -2,6 +2,7 @@ import { Body, Controller, Get, HttpCode, HttpStatus, Post, Request, UseGuards }
 import {
   ApiBadRequestResponse,
   ApiBearerAuth,
+  ApiNoContentResponse,
   ApiOkResponse,
   ApiOperation,
   ApiTags,
@@ -40,6 +41,20 @@ export class AuthController {
   })
   refresh(@Body() dto: RefreshTokenDto) {
     return this.authService.refresh(dto.refreshToken);
+  }
+
+  @Post('logout')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @ApiOperation({
+    summary: 'Invalidate a refresh token',
+    description:
+      'Public: send no Authorization header. Always answers 204, even if the token is unknown, ' +
+      'expired or already used. The access token is not revoked and stays valid until it expires.',
+  })
+  @ApiNoContentResponse({ description: 'The refresh token no longer works (or never did)' })
+  @ApiBadRequestResponse({ description: 'Missing, empty or non-string refreshToken, or extra fields' })
+  logout(@Body() dto: RefreshTokenDto): void {
+    this.authService.logout(dto.refreshToken);
   }
 
   @Get('me')
