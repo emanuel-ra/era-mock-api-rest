@@ -1,0 +1,22 @@
+meta {
+  name: Refresh invalid token
+  type: http
+  seq: 7
+}
+
+post {
+  url: {{baseUrl}}/auth/refresh
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "refreshToken": "not-a-real-refresh-token"
+  }
+}
+
+assert {
+  res.status: eq 401
+  res.body.message: eq Invalid refresh token
+}
