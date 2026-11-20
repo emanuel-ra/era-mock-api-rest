@@ -23,7 +23,8 @@ Skills in `.claude/skills/` run the git flow (`dev` integration branch, one work
 
 - `/start-work`: worktree from `origin/dev` → implement → verify → review → PR into `dev`.
 - `/finish-work`: after the merge, removes the worktree and local branch and updates `dev`.
-- `/release`: PR from `dev` into `main` with a changelog.
+- `/release`: PR from `dev` into `main` with a changelog; runs `/audit-docs` first and stops on FAIL.
+- `/audit-docs [files] [low]`: audits `README.md`, `AGENTS.md`, `CLAUDE.md`, `.github/copilot-instructions.md` and `docs/*.md` (or the given files) with one `doc-auditor` per file in parallel; shows high/medium findings and PASS/FAIL in the chat, without writing files.
 
 ## Worktrees
 
@@ -45,3 +46,4 @@ Configured in `.claude/settings.json`:
 In `.claude/agents/`:
 
 - `test-runner`: runs `npm run test:all:report`, re-runs failures to spot flaky tests, classifies each failure's cause and writes `reports/diagnostico-<date>.html`. It only writes inside `reports/` (gitignored).
+- `doc-auditor` (sonnet, tools `Read`, `Grep`, `Glob` only): audits one doc file against the code and the other docs and returns a `file | finding | type | severity | evidence` table. Used by `/audit-docs`.

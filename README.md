@@ -97,13 +97,14 @@ A worktree starts without `node_modules` or `.env`, so each one needs `npm ci` (
 
 ### Running it with Claude Code
 
-The project ships three skills in `.claude/skills/` that run the whole cycle:
+The project ships four skills in `.claude/skills/` that run the whole cycle:
 
 | Command | Run from | What it does |
 |---------|----------|--------------|
 | `/start-work <request>` | main checkout | Creates the worktree from `origin/dev`, sets it up, asks for missing requirements, implements, runs type-check, lint and tests, commits, rebases on `origin/dev`, and stops at a review gate. After you approve, it pushes and opens the PR into `dev`. |
 | `/finish-work` | the session that worked on it | After you merge the PR on GitHub: checks it is merged, leaves and removes the worktree, deletes the local branch and pulls `dev`. |
-| `/release` | main checkout | Checks that `dev` is green, builds a changelog from the merged PRs and, after you approve, opens the release PR from `dev` into `main`. |
+| `/release` | main checkout | Checks that `dev` is green, builds a changelog from the merged PRs, runs `/audit-docs` (stops on FAIL) and, after you approve, opens the release PR from `dev` into `main`. |
+| `/audit-docs [files]` | anywhere | Checks the README, `AGENTS.md`, `CLAUDE.md`, the Copilot instructions and `docs/` against the code, one read-only `doc-auditor` subagent per file, and answers PASS (no high-severity findings) or FAIL. It only reports in the chat. |
 
 Claude never pushes or opens a PR without asking first. Two hooks in `.claude/hooks/` back this up: `protect-branches.sh` blocks it from editing files or committing in any checkout that is on `main` or `dev`, and `related-tests.sh` runs the tests related to every `.ts` file it edits and reports failures back to it.
 
