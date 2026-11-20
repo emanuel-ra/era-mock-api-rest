@@ -35,7 +35,7 @@ docker compose up --build  # run the API in Docker (port from .env PORT, default
 
 ## Environment
 
-Copy `.env.example` to `.env`. Required: `PORT` (default 3000), `JWT_SECRET`, `JWT_EXPIRES_IN` (e.g. `1h`). Optional: `MOCK_DELAY_MS` (base latency, integer 0–10000) and `MOCK_ERROR_RATE` (chance 0–1 of a random `500`); both default to 0 when unset, and an invalid value stops the app on boot. CI and Docker run without `.env`, so the config fallbacks must keep working. Load configuration through environment variables and Nest's `ConfigModule`; never commit secrets.
+Copy `.env.example` to `.env`. Required: `PORT` (default 3000), `JWT_SECRET`, `JWT_EXPIRES_IN` (e.g. `1h`). Optional: `JWT_REFRESH_EXPIRES_IN` (refresh token lifetime, same format, default `7d`; an invalid value stops the app on boot), `MOCK_DELAY_MS` (base latency, integer 0–10000) and `MOCK_ERROR_RATE` (chance 0–1 of a random `500`); both default to 0 when unset, and an invalid value stops the app on boot. CI and Docker run without `.env`, so the config fallbacks must keep working. Load configuration through environment variables and Nest's `ConfigModule`; never commit secrets.
 
 ## Project structure
 

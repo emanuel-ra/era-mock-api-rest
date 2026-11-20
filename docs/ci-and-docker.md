@@ -14,7 +14,7 @@ CI runs without a `.env` file, so the app must keep working with the config fall
 ## Docker
 
 - `Dockerfile` is a two-stage build on `node:24-alpine`: build with dev dependencies → runtime with `npm ci --omit=dev` + `dist/`, user `node`, healthcheck on `GET /seed/status`.
-- `compose.yaml` maps `${PORT:-3000}` to the container's port 3000 and passes `JWT_SECRET`/`JWT_EXPIRES_IN` (and `MOCK_DELAY_MS`/`MOCK_ERROR_RATE`) from `.env` or defaults.
+- `compose.yaml` maps `${PORT:-3000}` to the container's port 3000 and passes `JWT_SECRET`/`JWT_EXPIRES_IN`/`JWT_REFRESH_EXPIRES_IN` (and `MOCK_DELAY_MS`/`MOCK_ERROR_RATE`) from `.env` or defaults.
 - `.dockerignore` keeps `.env`, tests, docs and `bruno/` out of the build context.
 - If a new runtime file is needed (e.g. assets), copy it in the Dockerfile runtime stage.
 
