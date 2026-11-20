@@ -1,0 +1,28 @@
+meta {
+  name: Refresh reused token
+  type: http
+  seq: 7
+}
+
+post {
+  url: {{baseUrl}}/auth/refresh
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "refreshToken": "{{rotatedRefreshToken}}"
+  }
+}
+
+assert {
+  res.status: eq 401
+  res.body.message: eq Invalid refresh token
+}
+
+docs {
+  Sends again the refresh token that the last "Refresh" request already exchanged (run "Refresh" first).
+  Reuse is treated as theft: it returns 401 and revokes the whole session, so the refreshToken saved by "Refresh" stops working too.
+  Run a Login request again to start a new session.
+}

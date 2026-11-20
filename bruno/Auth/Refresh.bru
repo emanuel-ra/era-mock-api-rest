@@ -20,6 +20,11 @@ assert {
   res.status: eq 200
 }
 
+script:pre-request {
+  // Kept for "Refresh reused token", which sends it again after it is rotated.
+  bru.setEnvVar("rotatedRefreshToken", bru.getEnvVar("refreshToken"));
+}
+
 script:post-response {
   bru.setEnvVar("token", res.body.accessToken);
   bru.setEnvVar("refreshToken", res.body.refreshToken);
@@ -27,5 +32,5 @@ script:post-response {
 
 docs {
   Exchanges the refresh token saved by a Login request for a new pair and saves both.
-  Each refresh token works once: running this twice without the script saving the new one returns 401.
+  Each refresh token works once: sending one that was already exchanged returns 401 and revokes the whole session.
 }

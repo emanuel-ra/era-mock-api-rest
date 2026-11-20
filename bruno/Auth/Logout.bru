@@ -1,7 +1,7 @@
 meta {
   name: Logout
   type: http
-  seq: 8
+  seq: 9
 }
 
 post {
@@ -21,6 +21,6 @@ assert {
 }
 
 docs {
-  Invalidates the refresh token saved by a Login or Refresh request. Always 204, even if the token is unknown or already used.
+  Revokes the session of the refresh token saved by a Login or Refresh request: every refresh token of that login stops working. Always 204, even if the token is unknown or already used.
   The saved access token keeps working until it expires; run a Login request again to get a new refresh token.
 }
