@@ -130,6 +130,8 @@ describe('SeedService', () => {
       token: 'some-token',
       userId: '00000000-0000-4000-8000-000000000001',
       expiresAt: new Date(Date.now() + 60_000),
+      familyId: 'family-1',
+      rotatedAt: null,
     });
 
     await service.reset();

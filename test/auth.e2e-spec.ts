@@ -91,11 +91,32 @@ describe('Auth (e2e)', () => {
         .expect(200);
     });
 
-    it('rejects a refresh token that was already exchanged', async () => {
-      const { refreshToken } = await loginPair();
-      await refresh(refreshToken).expect(200);
+    it('rejects a reused token and revokes the token that replaced it', async () => {
+      const { refreshToken: r1 } = await loginPair();
+      const r2 = (await refresh(r1).expect(200)).body.refreshToken as string;
 
-      await expectInvalid(refreshToken);
+      await expectInvalid(r1);
+      await expectInvalid(r2);
+    });
+
+    it('keeps another session (family) working when one is revoked by reuse', async () => {
+      const first = await loginPair();
+      const second = await loginPair();
+      await refresh(first.refreshToken).expect(200);
+
+      await expectInvalid(first.refreshToken);
+
+      await refresh(second.refreshToken).expect(200);
+    });
+
+    it('lets one of two parallel refreshes win and revokes its new token', async () => {
+      const { refreshToken } = await loginPair();
+
+      const results = await Promise.all([refresh(refreshToken), refresh(refreshToken)]);
+
+      expect(results.map((r) => r.status).sort()).toEqual([200, 401]);
+      const winner = results.find((r) => r.status === 200)!;
+      await expectInvalid(winner.body.refreshToken);
     });
 
     it('keeps the rotated token usable for the next refresh', async () => {
@@ -206,6 +227,18 @@ describe('Auth (e2e)', () => {
       await refresh(refreshToken).expect(200);
 
       await logout(refreshToken).expect(204);
+    });
+
+    it('revokes every token of the session, old and current', async () => {
+      const { refreshToken: r1 } = await loginPair();
+      const r2 = (await refresh(r1).expect(200)).body.refreshToken as string;
+
+      await logout(r2).expect(204);
+
+      for (const token of [r1, r2]) {
+        const res = await refresh(token).expect(401);
+        expect(res.body.message).toBe('Invalid refresh token');
+      }
     });
 
     it('answers 204 twice for the same refresh token', async () => {
