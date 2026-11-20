@@ -1,84 +1,47 @@
 # CLAUDE.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository. The project overview, commands, conventions and critical rules are shared with other tools in `AGENTS.md`:
 
-## Commands
+@AGENTS.md
 
-```bash
-npm run start:dev    # start with hot reload (development)
-npm run start        # start without watch
-npm run build        # compile via NestJS CLI (output: dist/)
-npm run lint         # ESLint over src/ and test/
-npm run type-check   # tsc --noEmit
-npm test             # Jest unit tests (src/**/*.spec.ts)
-npm run test:watch   # unit tests in watch mode
-npm run test:cov     # unit tests with coverage report (output: coverage/)
-npm run test:e2e     # e2e tests over HTTP (test/**/*.e2e-spec.ts)
-npm run test:all:report   # unit + e2e with JSON and HTML reports (output: reports/)
-npx jest src/customers   # run a single folder or file
-docker compose up --build   # run the API in Docker (port from .env PORT, default 3000)
-```
+Below is only what is specific to Claude Code.
 
-Unit tests live next to the code they test as `*.spec.ts`. They cover services, repositories, `paginate`, `RolesGuard` and `JwtStrategy`; controllers are covered by the e2e tests instead.
-
-E2E tests live in `test/` and use Supertest against the full `AppModule`, booted by `createApp()` in `test/helpers.ts` with the same global setup as the server (`setupApp()` in `src/app.setup.ts`). Each e2e file gets its own app instance, so in-memory data is not shared between files. `tsconfig.build.json` keeps spec files and `test/` out of `dist/`.
-
-CI (`.github/workflows/ci.yml`, GitHub Actions, Node 24) runs lint, type-check, unit tests, e2e tests and build on every pull request and push to `main` or `dev` (job "Lint, type-check, tests and build"). A second job, "Docker image", builds the image with layer caching and runs `scripts/docker-smoke-test.sh` against it (healthy status, `/seed/status`, Swagger, login, 401 without token, runs as `node`, no `.env` or `src/` in the image). It runs without a `.env` file, so the app must keep working with the config fallbacks.
-
-Docker: `Dockerfile` is a two-stage build on `node:24-alpine` (build with dev deps → runtime with `npm ci --omit=dev` + `dist/`, user `node`, healthcheck on `GET /seed/status`). `compose.yaml` maps `${PORT:-3000}` to the container's port 3000 and passes `JWT_SECRET`/`JWT_EXPIRES_IN` from `.env` or defaults. `.dockerignore` keeps `.env`, tests, docs and `bruno/` out of the build context. If a new runtime file is needed (e.g. assets), copy it in the Dockerfile runtime stage.
-
-`.gitattributes` forces LF line endings (`* text=auto eol=lf`, `*.sh` explicitly), so a Windows clone keeps the hooks in `.claude/hooks/` and `scripts/docker-smoke-test.sh` runnable.
-
-## Manual testing (Bruno)
-
-`bruno/` holds the [Bruno](https://www.usebruno.com/) collection "era-mock-api", with one folder per module plus `Auth`, `Mock simulation` and `Seed`.
-
-- Open it in Bruno with **Open Collection** → the `bruno/` folder, and select the `local` environment (`baseUrl = http://localhost:3000`).
-- Run one of `Auth/Login admin|user|viewer` (password `password123`). Its post-response script saves the JWT with `bru.setEnvVar("token", ...)`, and the collection sends `Authorization: Bearer {{token}}` on every request. `token` is a secret variable, so it is never written to the committed files.
-- Create requests save the new id in a runtime variable (`customerId`, `productId`, `orderId`, …) that the get / update / delete requests of the same folder reuse. Running the whole collection in order works (it ends logged in as admin); `Seed/Reset` restores the data.
-- From the terminal, with the server running: `cd bruno && npx @usebruno/cli run --env local` (add `--env-var baseUrl=http://localhost:3001` for another port). The CLI is not a project dependency.
-- To run the server on another port, set `PORT` in `.env`, or for one run: `PORT=3001 npm run start:dev` (macOS/Linux) or `$env:PORT=3001; npm run start:dev` (Windows PowerShell). Then change `baseUrl` in the environment to match.
-
-## Overview
-
-NestJS REST API that runs entirely **in memory** — no database. All data is lost on restart and re-seeded on boot via `SeedModule`. Modules: `AuthModule` (JWT + roles `admin`/`user`/`viewer`), `UsersModule` (admin-only user CRUD over the same users store), `CategoriesModule`, `CustomersModule`, `ProductsModule` (products reference categories by `categoryId`), `OrdersModule` (orders reference a customer and products; status flow `pending → paid → shipped → delivered` or `cancelled`), `StatsModule` (read-only dashboard aggregates over customers, products and orders), `SeedModule`. Swagger is served at `/api/docs`.
-
-## Environment
-
-Copy `.env.example` to `.env`. Required variables:
-
-```
-PORT=3000
-JWT_SECRET=...
-JWT_EXPIRES_IN=1h
-```
-
-Optional mock behavior (validated on boot; an invalid value stops the app):
-
-```
-MOCK_DELAY_MS=0      # base latency for every request, integer 0–10000
-MOCK_ERROR_RATE=0    # probability 0–1 of answering 500 at random
-```
-
-Both default to 0 when unset (CI and Docker run without `.env`); `compose.yaml` passes them through. `GET /seed/status` and `/api/docs` are exempt from both, so the Docker healthcheck keeps working. Per-request headers `x-mock-delay` and `x-mock-status` are described in `docs/features.md`.
-
-## Detailed docs
+## Detailed docs (loaded into context)
 
 - Features catalog (modules, endpoints, access, filters): @docs/features.md
 - Architecture (data layer, modules, auth, pagination): @docs/architecture.md
 - Seed data and default credentials: @docs/seed-data.md
 - Steps to add a new resource: @docs/adding-a-resource.md
 
-Working rules in `.claude/rules/` (loaded automatically): git workflow and branch naming, commit conventions, and keeping `docs/features.md` up to date.
+Manual testing with Bruno ([docs/manual-testing.md](docs/manual-testing.md)) and CI/Docker ([docs/ci-and-docker.md](docs/ci-and-docker.md)) are read on demand.
 
-Git flow: `dev` is the default and integration branch; `main` only receives release PRs from `dev`. Each unit of work runs in its own git worktree under `.claude/worktrees/` (gitignored) and reaches `dev` through its own PR, merged with a merge commit. Skills in `.claude/skills/`:
+Working rules in `.claude/rules/` are loaded automatically: git workflow and branch naming, commit conventions, and keeping `docs/features.md` and `bruno/` up to date.
+
+## Skills
+
+Skills in `.claude/skills/` run the git flow (`dev` integration branch, one worktree and PR per unit of work):
 
 - `/start-work`: worktree from `origin/dev` → implement → verify → review → PR into `dev`.
 - `/finish-work`: after the merge, removes the worktree and local branch and updates `dev`.
 - `/release`: PR from `dev` into `main` with a changelog.
 
-The `.claude/hooks/protect-branches.sh` hook blocks editing files or committing in any checkout that is on `main` or `dev`. The `.claude/hooks/related-tests.sh` hook runs `jest --findRelatedTests` after every edit of a `.ts` file and reports failures back to Claude.
+## Worktrees
 
-Subagents in `.claude/agents/`:
+Each unit of work runs in its own git worktree under `.claude/worktrees/` (gitignored). In the same session, move in with the `EnterWorktree` tool and leave with `ExitWorktree`; never `cd` in or out. For parallel work, the user opens a new terminal with `cd <worktree> && claude`. Details in `.claude/rules/git-workflow.md`.
+
+## Hooks
+
+Configured in `.claude/settings.json`:
+
+- `.claude/hooks/protect-branches.sh` (PreToolUse) blocks editing files or committing in any checkout that is on `main` or `dev`.
+- `.claude/hooks/related-tests.sh` (PostToolUse) runs `jest --findRelatedTests` after every edit of a `.ts` file and reports failures back to Claude.
+
+## Permissions
+
+`.claude/settings.json` sets `git push`, `gh pr create` and `gh issue create` to `ask`, so each one needs the user's approval even when other commands are allowed.
+
+## Subagents
+
+In `.claude/agents/`:
 
 - `test-runner`: runs `npm run test:all:report`, re-runs failures to spot flaky tests, classifies each failure's cause and writes `reports/diagnostico-<date>.html`. It only writes inside `reports/` (gitignored).
