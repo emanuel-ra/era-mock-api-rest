@@ -41,18 +41,26 @@ For each PR number, get its title with `gh pr view <n> --json number,title`. Gro
 
 Mark breaking changes (`!` in the title, or a `BREAKING CHANGE` footer in any commit of the range) at the top.
 
-## 4. Review gate — stop here
+## 4. Audit the docs
+
+Make sure the main checkout is up to date with `origin/dev` (`git pull --ff-only` on `dev`), then run `/audit-docs` on the default files.
+
+- **FAIL:** stop. Show the findings and tell the user to fix them in a `docs/` branch with `/start-work` before releasing. Do not open the PR.
+- **PASS:** keep the medium findings to show in the review gate.
+
+## 5. Review gate — stop here
 
 Show the user:
 
 1. The PRs that will be released, grouped as above.
 2. `git diff --stat origin/main...origin/dev`.
 3. The CI result from step 2.
-4. The proposed PR title, `chore(release): <YYYY-MM-DD>`, and body: the changelog, and a test plan saying CI must pass on this PR.
+4. The docs audit result from step 4, with any medium findings.
+5. The proposed PR title, `chore(release): <YYYY-MM-DD>`, and body: the changelog, and a test plan saying CI must pass on this PR.
 
 **Do not run `gh pr create` until the user explicitly approves.**
 
-## 5. Open the PR (after approval)
+## 6. Open the PR (after approval)
 
 ```bash
 gh pr create --base main --head dev --title "<title>" --body-file <file>
