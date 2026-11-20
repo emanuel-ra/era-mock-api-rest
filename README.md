@@ -48,7 +48,21 @@ npm test           # unit tests
 npm run test:e2e   # e2e tests over HTTP
 ```
 
-CI runs lint, type-check, both test suites and the build on every pull request and every push to `main` or `dev`, and builds and smoke-tests the Docker image.
+CI runs lint, type-check, both test suites and the build on every pull request and every push to `main` or `dev`, and builds and smoke-tests the Docker image (details in [docs/ci-and-docker.md](docs/ci-and-docker.md)).
+
+## Manual testing
+
+The `bruno/` folder is a [Bruno](https://www.usebruno.com/) collection with a request for every endpoint. Open it in Bruno, pick the `local` environment, run one of the `Auth/Login` requests and the token is reused by the rest. How to run it from the terminal or against another port: [docs/manual-testing.md](docs/manual-testing.md).
+
+## Docs
+
+- [docs/features.md](docs/features.md): modules, endpoints, roles, filters and API conventions.
+- [docs/architecture.md](docs/architecture.md): how the in-memory data layer, auth, pagination and errors work.
+- [docs/seed-data.md](docs/seed-data.md): seed data and default credentials.
+- [docs/adding-a-resource.md](docs/adding-a-resource.md): steps to add a new resource.
+- [docs/manual-testing.md](docs/manual-testing.md): the Bruno collection.
+- [docs/ci-and-docker.md](docs/ci-and-docker.md): CI jobs and the Docker image.
+- [AGENTS.md](AGENTS.md): guide for AI coding agents and contributors (commands, conventions, rules).
 
 ## Development workflow
 
@@ -91,7 +105,7 @@ The project ships three skills in `.claude/skills/` that run the whole cycle:
 | `/finish-work` | the session that worked on it | After you merge the PR on GitHub: checks it is merged, leaves and removes the worktree, deletes the local branch and pulls `dev`. |
 | `/release` | main checkout | Checks that `dev` is green, builds a changelog from the merged PRs and, after you approve, opens the release PR from `dev` into `main`. |
 
-Claude never pushes or opens a PR without asking first. A hook (`.claude/hooks/protect-branches.sh`) blocks it from editing files or committing in any checkout that is on `main` or `dev`.
+Claude never pushes or opens a PR without asking first. Two hooks in `.claude/hooks/` back this up: `protect-branches.sh` blocks it from editing files or committing in any checkout that is on `main` or `dev`, and `related-tests.sh` runs the tests related to every `.ts` file it edits and reports failures back to it.
 
 After creating the worktree, `/start-work` asks where to continue:
 
