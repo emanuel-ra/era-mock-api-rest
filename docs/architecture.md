@@ -2,6 +2,10 @@
 
 NestJS REST API that runs entirely **in memory** — no database. All data is lost on restart and re-seeded on boot via `SeedModule` (see [seed-data.md](seed-data.md)).
 
+## Global setup
+
+`setupApp()` ([src/app.setup.ts](../src/app.setup.ts)) holds the global configuration shared by the server (`main.ts`) and the e2e tests: the request id middleware, `helmet`, CORS, a global `ValidationPipe` (`whitelist`, `forbidNonWhitelisted`, `transform`), the mock behavior interceptor and the exceptions filter (each described below).
+
 ## Data layer
 
 `InMemoryRepository<T>` ([src/core/repositories/in-memory.repository.ts](../src/core/repositories/in-memory.repository.ts)) is the single generic base class for all storage. It wraps a `Map<string, T>` and provides `findAll` (with optional filtering: string fields match exactly, case-insensitive, unless listed in the subclass's `searchableFields`, which match by substring), `findById`, `findByIdOrFail`, `create` (auto-assigns UUID + timestamps; the seed can pass a fixed id or a past `createdAt`), `update`, `delete`, `count`, and `clear`. Domain repositories extend this class and add any entity-specific lookups (e.g. `findByEmail` on `UsersRepository`).

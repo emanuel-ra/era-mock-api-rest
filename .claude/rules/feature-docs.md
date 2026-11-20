@@ -14,7 +14,7 @@ If the change also affects architecture, seed data or the steps to add a resourc
 
 ## Keep the Bruno collection in sync
 
-`bruno/` is the manual testing collection (see "Manual testing (Bruno)" in `CLAUDE.md`). In the same branch:
+`bruno/` is the manual testing collection (see [docs/manual-testing.md](../../docs/manual-testing.md)). In the same branch:
 
 - New module: add a `bruno/<Module>/` folder with a `folder.bru` (`meta { name, seq }`, placed before `Mock simulation` and `Seed`) and its requests: list (with filter, pagination and `sortBy`/`order` examples), get, create, update, delete, plus any extra action.
 - New or changed endpoint: add or update its `.bru` file (route, body, query params, expected status in `assert`). Removed endpoint: delete its file.
