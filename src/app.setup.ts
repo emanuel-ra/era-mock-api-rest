@@ -15,7 +15,10 @@ import {
 export function setupApp(app: INestApplication): void {
   // First, so every response (errors included) carries x-request-id.
   app.use(requestIdMiddleware);
-  app.use(helmet());
+  // The API is served over plain http. With upgrade-insecure-requests, browsers
+  // ask for the Swagger assets over https on any host but localhost, and the
+  // page stays blank.
+  app.use(helmet({ contentSecurityPolicy: { directives: { upgradeInsecureRequests: null } } }));
   app.enableCors();
 
   app.useGlobalPipes(

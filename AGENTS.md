@@ -75,6 +75,7 @@ Copy `.env.example` to `.env`. Required: `PORT` (default 3000), `JWT_SECRET`, `J
 - [docs/adding-a-resource.md](docs/adding-a-resource.md): steps to add a new resource.
 - [docs/manual-testing.md](docs/manual-testing.md): the Bruno collection.
 - [docs/ci-and-docker.md](docs/ci-and-docker.md): CI jobs, Docker image, line endings.
+- [docs/deploy.md](docs/deploy.md): deploy to a server in the local network, checks and rollback.
 - [.claude/rules/git-workflow.md](.claude/rules/git-workflow.md): branches, worktrees, merging, push and PR approval.
 - [.claude/rules/git-conventions.md](.claude/rules/git-conventions.md): commit message format.
 - [.claude/rules/feature-docs.md](.claude/rules/feature-docs.md): keeping `docs/features.md` and `bruno/` in sync.

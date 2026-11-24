@@ -62,6 +62,7 @@ The `bruno/` folder is a [Bruno](https://www.usebruno.com/) collection with a re
 - [docs/adding-a-resource.md](docs/adding-a-resource.md): steps to add a new resource.
 - [docs/manual-testing.md](docs/manual-testing.md): the Bruno collection.
 - [docs/ci-and-docker.md](docs/ci-and-docker.md): CI jobs and the Docker image.
+- [docs/deploy.md](docs/deploy.md): deploying to a server in the local network, checks and rollback.
 - [AGENTS.md](AGENTS.md): guide for AI coding agents and contributors (commands, conventions, rules).
 
 ## Development workflow

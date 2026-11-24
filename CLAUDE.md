@@ -13,7 +13,7 @@ Below is only what is specific to Claude Code.
 - Seed data and default credentials: @docs/seed-data.md
 - Steps to add a new resource: @docs/adding-a-resource.md
 
-Manual testing with Bruno ([docs/manual-testing.md](docs/manual-testing.md)) and CI/Docker ([docs/ci-and-docker.md](docs/ci-and-docker.md)) are read on demand.
+Manual testing with Bruno ([docs/manual-testing.md](docs/manual-testing.md)), CI/Docker ([docs/ci-and-docker.md](docs/ci-and-docker.md)) and deploy ([docs/deploy.md](docs/deploy.md)) are read on demand.
 
 Working rules in `.claude/rules/` are loaded automatically: git workflow and branch naming, commit conventions, and keeping `docs/features.md` and `bruno/` up to date.
 
