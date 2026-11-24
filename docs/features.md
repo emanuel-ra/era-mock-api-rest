@@ -48,7 +48,13 @@ Login and identity of the current user. Three users are seeded (see [seed-data.m
 
 Logout does not revoke access tokens: one issued before the logout keeps working until it expires (`JWT_EXPIRES_IN`), so the client must discard it.
 
-Tokens are rejected if their user no longer exists, and the role is read from the stored user on every request, so a role change applies to existing tokens at once.
+Protected routes reject an access token with `401` and one of these messages, so a client can refresh only on expiry and go to the login on any other `401`:
+
+- `Token expired`: the token is genuine but its lifetime (`JWT_EXPIRES_IN`) is over.
+- `Unauthorized`: no token, a malformed token or a wrong signature (even if it is also expired).
+- `User no longer exists`: a valid token whose user was deleted.
+
+The role is read from the stored user on every request, so a role change applies to existing tokens at once.
 
 Refresh tokens:
 

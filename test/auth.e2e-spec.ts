@@ -1,4 +1,5 @@
 import { INestApplication } from '@nestjs/common';
+import { JwtService } from '@nestjs/jwt';
 import request from 'supertest';
 import { RefreshTokensRepository } from '../src/auth/repositories/refresh-tokens.repository';
 import { createApp, login, PASSWORD } from './helpers';
@@ -300,15 +301,80 @@ describe('Auth (e2e)', () => {
       expect(res.body).not.toHaveProperty('password');
     });
 
-    it('returns 401 without a token', () => {
-      return http().get('/auth/me').expect(401);
+    it('returns 401 "Unauthorized" without a token', async () => {
+      const res = await http().get('/auth/me').expect(401);
+
+      expect(res.body.message).toBe('Unauthorized');
     });
 
-    it('returns 401 with an invalid token', () => {
-      return http()
+    it('returns 401 "Unauthorized" with a malformed token', async () => {
+      const res = await http()
         .get('/auth/me')
         .set('Authorization', 'Bearer not-a-real-token')
         .expect(401);
+
+      expect(res.body.message).toBe('Unauthorized');
+    });
+  });
+
+  describe('rejected access tokens', () => {
+    /** Claims of a real access token, without its dates. */
+    const adminClaims = async () => {
+      const { sub, email, role } = decodeJwt(await login(app, 'admin'));
+      return { sub, email, role };
+    };
+
+    const get = (path: string, token: string) =>
+      http().get(path).set('Authorization', `Bearer ${token}`);
+
+    // One route guarded by JwtAuthGuard alone and one with RolesGuard as well.
+    it.each(['/auth/me', '/users'])('answers "Token expired" on %s', async (path) => {
+      const token = app
+        .get(JwtService, { strict: false })
+        .sign(await adminClaims(), { expiresIn: -60 });
+
+      const res = await get(path, token).expect(401);
+
+      expect(res.body).toEqual({
+        statusCode: 401,
+        error: 'Unauthorized',
+        message: 'Token expired',
+        path,
+        timestamp: expect.any(String),
+        requestId: res.headers['x-request-id'],
+      });
+    });
+
+    it.each([
+      ['a valid', 3600],
+      ['an expired', -60],
+    ])('answers "Unauthorized" for %s token with a wrong signature', async (_case, expiresIn) => {
+      const token = new JwtService({ secret: 'another-secret' }).sign(await adminClaims(), {
+        expiresIn,
+      });
+
+      const res = await get('/auth/me', token).expect(401);
+
+      expect(res.body.message).toBe('Unauthorized');
+    });
+
+    it('answers "User no longer exists" for a valid token of a deleted user', async () => {
+      const adminToken = await login(app, 'admin');
+      const email = `deleted-${Date.now()}@example.com`;
+      const created = await http()
+        .post('/users')
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send({ name: 'Deleted Tester', email, password: PASSWORD })
+        .expect(201);
+      const { accessToken } = await loginPair(email);
+      await http()
+        .delete(`/users/${created.body.id}`)
+        .set('Authorization', `Bearer ${adminToken}`)
+        .expect(204);
+
+      const res = await get('/auth/me', accessToken).expect(401);
+
+      expect(res.body.message).toBe('User no longer exists');
     });
   });
 });

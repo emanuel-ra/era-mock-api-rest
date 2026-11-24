@@ -35,7 +35,7 @@ NestJS REST API that runs entirely **in memory** — no database. All data is lo
 
 JWT is issued by `AuthService.login`. The strategy (`JwtStrategy`) extracts `{ id, email, role }` from the token payload into `req.user`. Two guards exist:
 
-- `JwtAuthGuard` — validates the token.
+- `JwtAuthGuard` — validates the token. Its `handleRequest()` answers `Token expired` when Passport reports a `TokenExpiredError` and leaves every other rejection to the base guard.
 - `RolesGuard` — reads the `@Roles(...)` decorator and checks `req.user.role`. Used together with `JwtAuthGuard`.
 
 Roles enum: `admin`, `user`, `viewer` (defined in [src/core/decorators/roles.decorator.ts](../src/core/decorators/roles.decorator.ts)).

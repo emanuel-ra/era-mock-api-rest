@@ -51,7 +51,7 @@ Copy `.env.example` to `.env`. Required: `PORT` (default 3000), `JWT_SECRET`, `J
 
 ## Testing
 
-- Unit tests (Jest + `ts-jest`) live next to the code as `*.spec.ts`. They cover services, repositories, `paginate`, `RolesGuard`, `JwtStrategy`, the mock behavior interceptor, the exceptions filter and the utilities in `src/core/utils/`; controllers are covered by the e2e tests.
+- Unit tests (Jest + `ts-jest`) live next to the code as `*.spec.ts`. They cover services, repositories, `paginate`, `JwtAuthGuard`, `RolesGuard`, `JwtStrategy`, the mock behavior interceptor, the exceptions filter and the utilities in `src/core/utils/`; controllers are covered by the e2e tests.
 - E2E tests live in `test/*.e2e-spec.ts` (config `test/jest-e2e.json`) and use Supertest against the full `AppModule`, booted by `createApp()` in `test/helpers.ts` with the same global setup as the server (`setupApp()`). Each e2e file gets its own app instance, so in-memory data is not shared between files. `tsconfig.build.json` keeps specs and `test/` out of `dist/`.
 - Add or update tests with every behavior change, including success and error cases. No coverage threshold is configured.
 - Before a PR, run `npm run type-check`, `npm run lint`, `npm test` and `npm run test:e2e`. CI runs the same plus the build and a Docker smoke test: [docs/ci-and-docker.md](docs/ci-and-docker.md).
