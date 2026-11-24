@@ -6,7 +6,10 @@ services:
     build: .
     image: era-mock-api-rest:local
     ports:
-      - "${PORT:-3000}:3000"
+      # 0.0.0.0 publishes on IPv4 only. Without it Docker also listens on [::],
+      # which may be reachable from the internet, and host firewalls such as ufw
+      # do not filter published ports.
+      - "0.0.0.0:${PORT:-3000}:3000"
     environment:
       PORT: 3000
       JWT_SECRET: ${JWT_SECRET:-era-mock-api-secret-change-in-production}
@@ -15,3 +18,9 @@ services:
       MOCK_DELAY_MS: ${MOCK_DELAY_MS:-0}
       MOCK_ERROR_RATE: ${MOCK_ERROR_RATE:-0}
     restart: unless-stopped
+    mem_limit: 256m
+    logging:
+      driver: json-file
+      options:
+        max-size: 10m
+        max-file: "3"
