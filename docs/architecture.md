@@ -4,7 +4,7 @@ NestJS REST API that runs entirely **in memory** — no database. All data is lo
 
 ## Global setup
 
-`setupApp()` ([src/app.setup.ts](../src/app.setup.ts)) holds the global configuration shared by the server (`main.ts`) and the e2e tests: the request id middleware, `helmet`, CORS, a global `ValidationPipe` (`whitelist`, `forbidNonWhitelisted`, `transform`), the mock behavior interceptor and the exceptions filter (each described below).
+`setupApp()` ([src/app.setup.ts](../src/app.setup.ts)) holds the global configuration shared by the server (`main.ts`) and the e2e tests: the request id middleware, `helmet` (default policy without `upgrade-insecure-requests`, so Swagger also loads over plain HTTP on hosts other than `localhost`), CORS, a global `ValidationPipe` (`whitelist`, `forbidNonWhitelisted`, `transform`), the mock behavior interceptor and the exceptions filter (each described below).
 
 ## Data layer
 
