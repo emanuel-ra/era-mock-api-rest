@@ -1,5 +1,6 @@
 import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import { paginate, PaginatedResult } from '../core/dto/pagination.dto';
+import { sortItems } from '../core/utils/sort';
 import { CreateCustomerDto } from './dto/create-customer.dto';
 import { FilterCustomersDto } from './dto/filter-customers.dto';
 import { UpdateCustomerDto } from './dto/update-customer.dto';
@@ -15,8 +16,8 @@ export class CustomersService {
   ) {}
 
   findAll(filters: FilterCustomersDto): PaginatedResult<CustomerEntity> {
-    const { page, limit, ...rest } = filters;
-    return paginate(this.repo.findAll(rest), page, limit);
+    const { page, limit, sortBy, order, ...rest } = filters;
+    return paginate(sortItems(this.repo.findAll(rest), sortBy, order), page, limit);
   }
 
   findOne(id: string): CustomerEntity {

@@ -1,0 +1,19 @@
+meta {
+  name: Sales last 30 days
+  type: http
+  seq: 2
+}
+
+get {
+  url: {{baseUrl}}/stats/sales
+  body: none
+  auth: inherit
+}
+
+assert {
+  res.status: eq 200
+}
+
+docs {
+  Defaults: last 30 days, grouped by day.
+}

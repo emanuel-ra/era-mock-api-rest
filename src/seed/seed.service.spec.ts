@@ -1,10 +1,12 @@
 import { Test } from '@nestjs/testing';
 import * as bcrypt from 'bcryptjs';
+import { RefreshTokensRepository } from '../auth/repositories/refresh-tokens.repository';
 import { UsersRepository } from '../auth/repositories/users.repository';
 import { CategoriesRepository } from '../categories/categories.repository';
 import { Role } from '../core/decorators/roles.decorator';
 import { CustomersRepository } from '../customers/customers.repository';
 import { OrdersRepository } from '../orders/orders.repository';
+import { ProductStatus } from '../products/entities/product.entity';
 import { ProductsRepository } from '../products/products.repository';
 import { SeedService } from './seed.service';
 
@@ -15,6 +17,7 @@ describe('SeedService', () => {
   let categoriesRepo: CategoriesRepository;
   let productsRepo: ProductsRepository;
   let ordersRepo: OrdersRepository;
+  let refreshTokensRepo: RefreshTokensRepository;
 
   beforeEach(async () => {
     const moduleRef = await Test.createTestingModule({
@@ -25,6 +28,7 @@ describe('SeedService', () => {
         CustomersRepository,
         ProductsRepository,
         OrdersRepository,
+        RefreshTokensRepository,
       ],
     }).compile();
 
@@ -34,6 +38,7 @@ describe('SeedService', () => {
     categoriesRepo = moduleRef.get(CategoriesRepository);
     productsRepo = moduleRef.get(ProductsRepository);
     ordersRepo = moduleRef.get(OrdersRepository);
+    refreshTokensRepo = moduleRef.get(RefreshTokensRepository);
 
     // compile() does not run lifecycle hooks; call it like Nest does on boot.
     await service.onModuleInit();
@@ -77,6 +82,29 @@ describe('SeedService', () => {
     }
   });
 
+  it('keeps product stock coherent with status after the sold orders take theirs', () => {
+    for (const product of productsRepo.findAll()) {
+      expect(product.stock).toBeGreaterThanOrEqual(0);
+      if (product.status === ProductStatus.Active) expect(product.stock).toBeGreaterThan(0);
+      if (product.status === ProductStatus.OutOfStock) expect(product.stock).toBe(0);
+    }
+  });
+
+  it('creates orders oldest first, so stock is taken in the order the sales happened', () => {
+    const times = ordersRepo.findAll().map((o) => o.createdAt.getTime());
+
+    expect(times).toEqual([...times].sort((a, b) => a - b));
+  });
+
+  it('spreads order creation dates over the last 90 days', () => {
+    const now = Date.now();
+    const ninetyDaysAgo = now - 90 * 24 * 60 * 60 * 1000;
+    const times = ordersRepo.findAll().map((o) => o.createdAt.getTime());
+
+    expect(times.every((t) => t >= ninetyDaysAgo && t <= now)).toBe(true);
+    expect(new Set(times).size).toBeGreaterThan(1);
+  });
+
   it('reset discards changes and re-seeds with the same user ids', async () => {
     customersRepo.create({
       name: 'Extra',
@@ -95,5 +123,19 @@ describe('SeedService', () => {
     expect(service.status()).toEqual({ users: 3, categories: 7, customers: 30, products: 30, orders: 20 });
     expect(customersRepo.findByEmail('extra@example.com')).toBeUndefined();
     expect(usersRepo.findById('00000000-0000-4000-8000-000000000001')).toBeDefined();
+  });
+
+  it('reset drops every refresh token', async () => {
+    refreshTokensRepo.create({
+      token: 'some-token',
+      userId: '00000000-0000-4000-8000-000000000001',
+      expiresAt: new Date(Date.now() + 60_000),
+      familyId: 'family-1',
+      rotatedAt: null,
+    });
+
+    await service.reset();
+
+    expect(refreshTokensRepo.count()).toBe(0);
   });
 });

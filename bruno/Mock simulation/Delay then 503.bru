@@ -1,0 +1,24 @@
+meta {
+  name: Delay then 503
+  type: http
+  seq: 5
+}
+
+get {
+  url: {{baseUrl}}/orders
+  body: none
+  auth: inherit
+}
+
+headers {
+  x-mock-delay: 1000
+  x-mock-status: 503
+}
+
+assert {
+  res.status: eq 503
+}
+
+docs {
+  With both headers the delay comes first.
+}

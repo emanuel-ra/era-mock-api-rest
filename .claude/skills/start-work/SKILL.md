@@ -1,6 +1,6 @@
 ---
 name: start-work
-description: Start and run a unit of work in this repo — a new feature, a bug fix, a docs change or a refactor — from a new git worktree branched off `dev` to a reviewed PR into `dev`. Use when the user asks to build a feature (e.g. "add endpoints for categories"), fix a bug, document something or refactor code, or invokes /start-work.
+description: Start and run a unit of work in this repo — a new feature, a bug fix, a docs change or a refactor — from a new git worktree branched off `dev` to a reviewed PR into `dev`. Use when the user asks to build a feature (e.g. "add endpoints for categories"), implement a story issue planned with /plan-feature (e.g. "/start-work #43"), fix a bug, document something or refactor code, or invokes /start-work.
 ---
 
 # Start work
@@ -23,11 +23,12 @@ Pick the Conventional Commits type that describes the main change:
 
 If the request mixes types (e.g. a feature that also fixes a bug), use the main one for the branch and split the commits by type.
 
-## 2. Link a GitHub issue (fixes only)
+## 2. Link a GitHub issue
 
-- If the user gave an issue number, read it with `gh issue view <n>`.
-- If not, draft an issue (title + body with steps to reproduce, expected and actual behavior) and show it to the user. Run `gh issue create` only after they explicitly approve it, then use the returned number.
-- Other types do not need an issue unless the user gives one.
+- If the user gave an issue number, read it with `gh issue view <n> --comments`.
+- **Story issue** (label `story`, or a body starting with `Part of #<epic>`, created by `/plan-feature`): it is the source of requirements. Also read the parent epic (`gh issue view <epic>`), which holds the spec. Its acceptance criteria, API contract, technical tasks and Definition of Done drive steps 5–9.
+- **Fix without an issue:** draft an issue (title + body with steps to reproduce, expected and actual behavior) and show it to the user. Run `gh issue create` only after they explicitly approve it, then use the returned number.
+- Other types do not need an issue unless the user gives one. For a feature with no issue, suggest `/plan-feature` first if the requirements are large or unclear.
 
 ## 3. Create the worktree
 
@@ -70,6 +71,7 @@ Tests do not need `.env` (config has fallbacks). If the user wants to run `npm r
 ## 5. Prepare before coding
 
 - **feat:** confirm the requirements are complete: entity fields (required, defaults, unique, enums), endpoints, roles per endpoint, filters and seed data. Ask about anything missing in a single round of questions. For a new resource, follow `docs/adding-a-resource.md`.
+- **feat from a story issue:** take the requirements from the story's API contract and acceptance criteria; ask only about gaps or contradictions with the code, and suggest adding the answers to the issue. If the epic has a `spec-slug` and `docs/specs/<slug>.md` does not exist yet in the branch, save the epic body there (without the `spec-slug` comment, under a `# <epic title>` heading with a `Epic: #<epic>` line) as a separate `docs:` commit.
 - **fix:** reproduce the bug or trace it in the code and explain the root cause to the user before changing anything.
 - **docs / refactor / chore:** state the scope in one or two lines.
 
@@ -92,7 +94,7 @@ All four must pass. Add or update unit tests (`*.spec.ts` next to the changed fi
 
 - If endpoints, modules, fields, roles or filters changed, update `docs/features.md` (see `.claude/rules/feature-docs.md`).
 - Update other `docs/` files if architecture, seed data or the add-a-resource steps changed.
-- Commit with Conventional Commits (see `.claude/rules/git-conventions.md`), in small focused commits. For fixes, add a `Refs: #<issue>` footer. PRs are merged with a merge commit, so these commits stay in `dev`'s history.
+- Commit with Conventional Commits (see `.claude/rules/git-conventions.md`), in small focused commits. When the work has a linked issue (fixes and stories), add a `Refs: #<issue>` footer. PRs are merged with a merge commit, so these commits stay in `dev`'s history.
 - Bring in what other PRs merged into `dev` meanwhile, so conflicts show up here and not in the PR:
 
   ```bash
@@ -110,7 +112,8 @@ Show the user:
 2. The commits: `git log --oneline origin/dev..HEAD`.
 3. The changed files: `git diff --stat origin/dev...HEAD` (offer the full diff).
 4. Verification results from step 7.
-5. The proposed PR title (Conventional Commits style) and body: summary, test plan, and `Closes #<issue>` for fixes.
+   For a story issue, also check each acceptance criterion and Definition of Done item, marking which test or change covers it.
+5. The proposed PR title (Conventional Commits style) and body: summary, test plan, and `Closes #<issue>` when the work has a linked issue (fixes and stories).
 
 Then ask whether to push and open the PR. **Do not run `git push` or `gh pr create` until the user explicitly approves.** If they ask for changes, apply them, commit, and show the gate again.
 

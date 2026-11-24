@@ -1,0 +1,15 @@
+meta {
+  name: Delete order
+  type: http
+  seq: 13
+}
+
+delete {
+  url: {{baseUrl}}/orders/{{bigOrderId}}
+  body: none
+  auth: inherit
+}
+
+assert {
+  res.status: eq 204
+}

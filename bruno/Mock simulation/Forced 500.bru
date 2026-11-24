@@ -1,0 +1,19 @@
+meta {
+  name: Forced 500
+  type: http
+  seq: 2
+}
+
+get {
+  url: {{baseUrl}}/customers
+  body: none
+  auth: inherit
+}
+
+headers {
+  x-mock-status: 500
+}
+
+assert {
+  res.status: eq 500
+}

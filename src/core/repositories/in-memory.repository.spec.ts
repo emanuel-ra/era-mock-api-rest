@@ -49,6 +49,14 @@ describe('InMemoryRepository', () => {
       expect(created.id).toBe('fixed-id');
       expect(repo.findById('fixed-id')).toBeDefined();
     });
+
+    it('uses the given createdAt for both timestamps when provided', () => {
+      const date = new Date('2026-01-15T10:00:00Z');
+      const created = repo.create(item(), undefined, date);
+
+      expect(created.createdAt).toEqual(date);
+      expect(created.updatedAt).toEqual(date);
+    });
   });
 
   describe('findAll', () => {

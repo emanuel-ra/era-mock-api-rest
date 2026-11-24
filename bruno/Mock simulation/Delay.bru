@@ -1,0 +1,23 @@
+meta {
+  name: Delay
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{baseUrl}}/customers
+  body: none
+  auth: inherit
+}
+
+headers {
+  x-mock-delay: 1500
+}
+
+assert {
+  res.status: eq 200
+}
+
+docs {
+  `x-mock-delay` waits that many ms (0–10000) before answering.
+}

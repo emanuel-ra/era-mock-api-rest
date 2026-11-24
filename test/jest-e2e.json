@@ -5,5 +5,14 @@
   "transform": {
     "^.+\\.ts$": "ts-jest"
   },
-  "testEnvironment": "node"
+  "testEnvironment": "node",
+  "reporters": [
+    "default",
+    ["jest-html-reporters", {
+      "publicPath": "./reports/e2e",
+      "filename": "report.html",
+      "pageTitle": "Mock API - E2E tests",
+      "expand": true
+    }]
+  ]
 }

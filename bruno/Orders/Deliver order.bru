@@ -1,0 +1,21 @@
+meta {
+  name: Deliver order
+  type: http
+  seq: 9
+}
+
+patch {
+  url: {{baseUrl}}/orders/{{orderId}}/status
+  body: json
+  auth: inherit
+}
+
+body:json {
+  {
+    "status": "delivered"
+  }
+}
+
+assert {
+  res.status: eq 200
+}

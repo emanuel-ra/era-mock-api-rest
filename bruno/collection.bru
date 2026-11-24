@@ -1,0 +1,21 @@
+auth {
+  mode: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+docs {
+  Manual testing collection for era-mock-api.
+
+  1. Start the API (`npm run start:dev`) and pick the `local` environment.
+  2. Run one of the requests in `Auth` (admin, user or viewer, password `password123`).
+     Its post-response script stores the JWT in the `token` environment variable,
+     which every other request sends as `Authorization: Bearer {{token}}`.
+  3. Create requests save the new id in a runtime variable (e.g. `customerId`)
+     that the get / update / delete requests of the same folder use.
+
+  Running the whole collection in order logs in as admin (last login) and leaves the
+  data as it was, except for the order status changes; `Seed/Reset` restores everything.
+}

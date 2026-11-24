@@ -7,20 +7,77 @@ Conventions shared by all modules:
 - **Auth:** "JWT" means the endpoint needs an `Authorization: Bearer <token>` header from `POST /auth/login`. Roles are `admin`, `user` and `viewer`.
 - **Validation:** request bodies and query params are validated globally (`whitelist` + `forbidNonWhitelisted`), so unknown fields are rejected with `400`.
 - **List endpoints:** accept `page` (default 1) and `limit` (default 10, max 100) and return `{ data, meta: { total, page, limit, totalPages } }`.
+- **Sorting:** list endpoints accept `sortBy` (one of the module's sortable fields, listed in each section) and `order` (`asc` | `desc`, default `asc`). Strings sort case-insensitively, numbers and dates by value; records with no value (empty, `null`) go last in both orders. Without `sortBy` the default order (insertion order) is kept and `order` has no effect. An unknown `sortBy` or `order` returns `400`.
 - **Text filters:** fields marked *substring* match partially (case-insensitive). Other string filters must match exactly (case-insensitive).
-- **Errors:** unknown ids return `404`, duplicates on unique fields return `409`.
-- **Swagger:** interactive docs at `/api/docs`.
+- **Errors:** unknown ids return `404`, duplicates on unique fields return `409`. Every error (including `401`/`403`, unknown routes and simulated errors) answers the same JSON body:
+
+  ```json
+  {
+    "statusCode": 404,
+    "error": "Not Found",
+    "message": "Resource with id \"abc\" not found",
+    "path": "/customers/abc?page=1",
+    "timestamp": "2026-11-13T10:00:00.000Z",
+    "requestId": "3f2b8c1e-7a4d-4e9b-9c1a-2b5d6e7f8a90"
+  }
+  ```
+
+  - `error` is the status reason phrase; `path` is the requested URL with its query string; `timestamp` is ISO 8601 (UTC).
+  - `message` is a string, except validation errors (`400` from the body or query validation), which keep the array of messages, one per failed rule.
+  - Some errors add their own fields next to these, e.g. `missing` on the insufficient-stock `409` of `PATCH /orders/:id/status`. Those extra fields never replace the six above.
+  - Unexpected errors answer `500` with `message: "Internal server error"`; details are only logged on the server.
+- **Request id:** every response, success or error, carries an `x-request-id` header, and error bodies repeat it as `requestId`. Send your own `x-request-id` (1–128 letters, digits or `._:-`) to have it echoed back; otherwise, or if it is not valid, the server generates a uuid v4.
+- **Swagger:** interactive docs at `/api/docs`. The mock headers below are listed on every endpoint.
+- **Simulated latency and errors:** to test loading and error states, any request can send these optional headers:
+  - `x-mock-delay: <ms>` waits that many milliseconds (integer 0–10000) before answering. It overrides `MOCK_DELAY_MS` for that request.
+  - `x-mock-status: <code>` answers that 4xx/5xx code without running the handler (no data changes, no body validation), with the standard error body described above (`message: "Simulated error (x-mock-status)"`). Combined with `x-mock-delay`, the delay comes first.
+  - An invalid value in either header returns `400`.
+  - Auth runs first: on a protected route without a valid token you get `401`/`403`, not the forced status.
+  - Env vars `MOCK_DELAY_MS` (base latency, default 0) and `MOCK_ERROR_RATE` (0–1, chance of a random `500`, default 0) apply to every request except `GET /seed/status` and `/api/docs`.
 
 ## Auth
 
-Login and identity of the current user. Users are seeded and cannot be created through the API.
+Login and identity of the current user. Three users are seeded (see [seed-data.md](seed-data.md)); admins manage the rest through [Users](#users).
 
 | Method | Route | Access | Description |
 |--------|-------|--------|-------------|
-| POST | `/auth/login` | Public | Validates `email` + `password` and returns `{ accessToken, user: { id, email, name, role } }`. Invalid credentials return `401`. |
+| POST | `/auth/login` | Public | Validates `email` + `password` and returns `{ accessToken, refreshToken, user: { id, email, name, role } }`. Invalid credentials return `401`. |
+| POST | `/auth/refresh` | Public | Exchanges `{ refreshToken }` (required, non-empty string) for a new `{ accessToken, refreshToken, user }` with `200`; the token sent stops working. `401` with `message: "Invalid refresh token"` if it is unknown, expired, already used or its user no longer exists. Reusing an already used token also revokes its whole session (see *Reuse detection* below). |
+| POST | `/auth/logout` | Public | Revokes the session of `{ refreshToken }` (required, non-empty string): that token and every other refresh token of the same login stop working. Always `204`, even if the token is unknown, expired or already used. Other sessions of the same user keep working. |
 | GET | `/auth/me` | JWT (any role) | Returns the authenticated user without the password. |
 
-Tokens are rejected if their user no longer exists.
+Logout does not revoke access tokens: one issued before the logout keeps working until it expires (`JWT_EXPIRES_IN`), so the client must discard it.
+
+Protected routes reject an access token with `401` and one of these messages, so a client can refresh only on expiry and go to the login on any other `401`:
+
+- `Token expired`: the token is genuine but its lifetime (`JWT_EXPIRES_IN`) is over.
+- `Unauthorized`: no token, a malformed token or a wrong signature (even if it is also expired).
+- `User no longer exists`: a valid token whose user was deleted.
+
+The role is read from the stored user on every request, so a role change applies to existing tokens at once.
+
+Refresh tokens:
+
+- Opaque random strings (not JWTs) kept in memory. They last `JWT_REFRESH_EXPIRES_IN` (default `7d`, same format as `JWT_EXPIRES_IN`) and are dropped by a restart or `POST /seed/reset`, so the client must log in again.
+- Strict rotation: each refresh token works once.
+- Reuse detection: every login starts a session (a token *family*) and each refresh continues it. Sending a token that was already exchanged is treated as theft: it answers `401` and revokes the whole session, so the newest token of that login stops working too and the user must log in again. Other sessions (other logins) are not affected.
+- Parallel refreshes: two refreshes with the same token → the first gets the new pair, the second `401`, and that `401` revokes the session, including the pair the first call just returned. Run a single refresh at a time in the client and let other requests wait for it.
+- A new access token from a refresh carries the user's current role.
+- Consumer notes: do not try to refresh after a `401` from `/auth/refresh` itself (log in again instead), and do not treat a `500` from it (e.g. from `MOCK_ERROR_RATE`) as a logout. `x-mock-status` on `/auth/refresh` skips the handler, so the token is not consumed.
+
+## Users
+
+User management, admin only. Users log in through `POST /auth/login`.
+
+Fields: `name` (required, min 2), `email` (required, unique case-insensitive), `password` (required, min 6; stored as a bcrypt hash and never returned), `role` (`admin` | `user` | `viewer`, default `user`). Responses never include `password`.
+
+| Method | Route | Access | Description |
+|--------|-------|--------|-------------|
+| GET | `/users` | admin | Paginated list. Filters: `name` (substring), `email` (substring), `role` (enum). Sortable by `name`, `email`, `role`, `createdAt`. |
+| GET | `/users/:id` | admin | Get one user. |
+| POST | `/users` | admin | Create a user. `409` if the email already exists. |
+| PATCH | `/users/:id` | admin | Partial update; a new `password` is hashed again. `409` if the new email belongs to another user, or if an admin removes the `admin` role from themselves. |
+| DELETE | `/users/:id` | admin | Delete a user. Returns `204`, or `409` if an admin tries to delete themselves. The deleted user's tokens stop working. |
 
 ## Customers
 
@@ -30,7 +87,7 @@ Fields: `name` (required, min 2), `email` (required, unique), `phone`, `address`
 
 | Method | Route | Access | Description |
 |--------|-------|--------|-------------|
-| GET | `/customers` | JWT (any role) | Paginated list. Filters: `name` (substring), `city` (substring), `country` (exact), `isActive` (boolean). |
+| GET | `/customers` | JWT (any role) | Paginated list. Filters: `name` (substring), `city` (substring), `country` (exact), `isActive` (boolean). Sortable by `name`, `email`, `city`, `createdAt`. |
 | GET | `/customers/:id` | JWT (any role) | Get one customer. |
 | POST | `/customers` | admin, user | Create a customer. `409` if the email already exists. |
 | PATCH | `/customers/:id` | admin, user | Partial update. `409` if the new email belongs to another customer. |
@@ -44,7 +101,7 @@ Fields: `name` (required, min 2, unique case-insensitive), `slug` (unique; lower
 
 | Method | Route | Access | Description |
 |--------|-------|--------|-------------|
-| GET | `/categories` | JWT (any role) | Paginated list. Filters: `name` (substring), `isActive` (boolean). |
+| GET | `/categories` | JWT (any role) | Paginated list. Filters: `name` (substring), `isActive` (boolean). Sortable by `name`, `createdAt`. |
 | GET | `/categories/:id` | JWT (any role) | Get one category. |
 | POST | `/categories` | admin, user | Create a category. `409` if the name or slug already exists; `400` if no slug can be generated from the name. |
 | PATCH | `/categories/:id` | admin, user | Partial update. `409` if the new name or slug belongs to another category. |
@@ -58,7 +115,7 @@ Fields: `name` (required, min 2), `price` (required, positive, max 2 decimals), 
 
 | Method | Route | Access | Description |
 |--------|-------|--------|-------------|
-| GET | `/products` | JWT (any role) | Paginated list. Filters: `name` (substring), `categoryId` (exact uuid), `status` (enum). |
+| GET | `/products` | JWT (any role) | Paginated list. Filters: `name` (substring), `categoryId` (exact uuid), `status` (enum). Sortable by `name`, `price`, `stock`, `createdAt`. |
 | GET | `/products/:id` | JWT (any role) | Get one product. |
 | POST | `/products` | admin, user | Create a product. `409` if the SKU already exists; `400` if `categoryId` does not exist. |
 | PATCH | `/products/:id` | admin, user | Partial update. `409` if the new SKU belongs to another product; `400` if `categoryId` does not exist. Send `categoryId: null` to remove the category. |
@@ -66,18 +123,35 @@ Fields: `name` (required, min 2), `price` (required, positive, max 2 decimals), 
 
 ## Orders
 
-Customer orders with one or more product lines. Creating or editing an order does not change product stock.
+Customer orders with one or more product lines. Creating or editing an order does not change product stock; paying and cancelling a paid order do (see *Stock* below).
 
 Fields: `customerId` (required, uuid of an existing customer), `items` (required, at least one; each is `{ productId, quantity }` with an existing product, quantity int ≥ 1, and no product repeated), `notes`. Set by the server: `status` (`pending` | `paid` | `shipped` | `delivered` | `cancelled`, starts as `pending`), `total`, and per item `productName`, `unitPrice` and `subtotal`. The product name and price are copied when the items are saved, so later product changes or deletes do not affect the order.
 
 | Method | Route | Access | Description |
 |--------|-------|--------|-------------|
-| GET | `/orders` | JWT (any role) | Paginated list. Filters: `customerId` (exact uuid), `status` (enum). |
+| GET | `/orders` | JWT (any role) | Paginated list. Filters: `customerId` (exact uuid), `status` (enum). Sortable by `total`, `status` (alphabetical), `createdAt`. |
 | GET | `/orders/:id` | JWT (any role) | Get one order. |
 | POST | `/orders` | admin, user | Create a `pending` order. `400` if the customer or a product does not exist. |
 | PATCH | `/orders/:id` | admin, user | Partial update of `customerId`, `items` (replaces the whole list, with current product prices) or `notes`; the total is recalculated. `409` if the order is not `pending`; `400` if the customer or a product does not exist. |
-| PATCH | `/orders/:id/status` | admin, user | Change the status. Allowed: `pending → paid`, `paid → shipped`, `shipped → delivered`, and `pending`/`paid → cancelled`. Any other change returns `409`. |
+| PATCH | `/orders/:id/status` | admin, user | Change the status. Allowed: `pending → paid`, `paid → shipped`, `shipped → delivered`, and `pending`/`paid → cancelled`. Any other change returns `409`. Paying takes stock and cancelling a paid order returns it (see below); `409` if stock is short. |
 | DELETE | `/orders/:id` | admin | Delete an order. Returns `204`. |
+
+Stock:
+
+- `pending → paid` takes each item's `quantity` out of its product's `stock`. If any product has less stock than its line asks for, it answers `409` and changes nothing (neither the order nor any product). The body lists what is missing: `{ statusCode: 409, error: 'Conflict', message: 'Insufficient stock for: <names>', missing: [{ productId, productName, requested, available }] }`.
+- `paid → cancelled` puts the quantities back. Cancelling a `pending` order and moving to `shipped` or `delivered` do not touch stock.
+- Product status follows the stock: an `active` product that reaches 0 becomes `out_of_stock`, and an `out_of_stock` product that gets stock back (from a cancellation) becomes `active` again. `inactive` products keep their status.
+- Products deleted after the order was created are skipped, both when paying and when cancelling.
+
+## Stats
+
+Read-only aggregates for a dashboard. Only orders with status `paid`, `shipped` or `delivered` count as sales (revenue, the sales series and top products); `pending` and `cancelled` orders do not. Amounts are rounded to cents.
+
+| Method | Route | Access | Description |
+|--------|-------|--------|-------------|
+| GET | `/stats/summary` | JWT (any role) | `{ customers: { total, active }, products: { total, outOfStock, lowStock }, orders: { total, byStatus: { pending, paid, shipped, delivered, cancelled } }, revenue: { total } }`. `outOfStock` counts products with status `out_of_stock`; `lowStock` counts products with `stock < 5`. |
+| GET | `/stats/sales` | JWT (any role) | Time series `[{ period, orders, revenue }]` by order `createdAt`. Query: `from` and `to` (`YYYY-MM-DD`, UTC, both days included; default the last 30 days up to today) and `groupBy` (`day` → `YYYY-MM-DD` periods, `month` → `YYYY-MM`; default `day`). Periods without sales return zeros. `400` if a date is invalid, `from` is after `to`, or a `day` range is longer than 366 days. |
+| GET | `/stats/top-products` | JWT (any role) | Best-selling products by quantity: `[{ productId, productName, quantity, revenue }]`, ties broken by revenue. Read from the order lines, so deleted products are included, with the name from their latest order. Query: `limit` (1–50, default 5). |
 
 ## Seed
 

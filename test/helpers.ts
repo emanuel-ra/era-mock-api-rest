@@ -43,3 +43,21 @@ export async function loginAll(app: INestApplication): Promise<Record<SeededRole
   ]);
   return { admin, user, viewer };
 }
+
+/** Comparators matching how the API sorts each kind of field (see src/core/utils/sort.ts). */
+export const compareBy = {
+  text: (a: string, b: string) => a.localeCompare(b, undefined, { sensitivity: 'base' }),
+  number: (a: number, b: number) => a - b,
+  date: (a: string, b: string) => Date.parse(a) - Date.parse(b),
+};
+
+/** Asserts that `values` are already in `order` according to `compare`. */
+export function expectSorted<T>(
+  values: T[],
+  order: 'asc' | 'desc',
+  compare: (a: T, b: T) => number,
+): void {
+  const direction = order === 'desc' ? -1 : 1;
+  expect(values.length).toBeGreaterThan(1);
+  expect(values).toEqual([...values].sort((a, b) => compare(a, b) * direction));
+}

@@ -6,6 +6,7 @@ import {
 } from '@nestjs/common';
 import { CategoriesRepository } from '../categories/categories.repository';
 import { paginate, PaginatedResult } from '../core/dto/pagination.dto';
+import { sortItems } from '../core/utils/sort';
 import { CreateProductDto } from './dto/create-product.dto';
 import { FilterProductsDto } from './dto/filter-products.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
@@ -20,8 +21,8 @@ export class ProductsService {
   ) {}
 
   findAll(filters: FilterProductsDto): PaginatedResult<ProductEntity> {
-    const { page, limit, ...rest } = filters;
-    return paginate(this.repo.findAll(rest), page, limit);
+    const { page, limit, sortBy, order, ...rest } = filters;
+    return paginate(sortItems(this.repo.findAll(rest), sortBy, order), page, limit);
   }
 
   findOne(id: string): ProductEntity {

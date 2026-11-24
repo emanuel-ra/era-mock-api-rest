@@ -1,0 +1,19 @@
+meta {
+  name: Reset
+  type: http
+  seq: 2
+}
+
+post {
+  url: {{baseUrl}}/seed/reset
+  body: none
+  auth: none
+}
+
+assert {
+  res.status: eq 200
+}
+
+docs {
+  Clears every store and re-seeds it. Seeded users keep their ids, so the current token still works.
+}

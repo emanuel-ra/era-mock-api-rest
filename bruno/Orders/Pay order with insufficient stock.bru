@@ -1,0 +1,26 @@
+meta {
+  name: Pay order with insufficient stock
+  type: http
+  seq: 11
+}
+
+patch {
+  url: {{baseUrl}}/orders/{{bigOrderId}}/status
+  body: json
+  auth: inherit
+}
+
+body:json {
+  {
+    "status": "paid"
+  }
+}
+
+assert {
+  res.status: eq 409
+  res.body.missing: isArray
+}
+
+docs {
+  Answers 409 with `missing: [{ productId, productName, requested, available }]` and changes nothing.
+}

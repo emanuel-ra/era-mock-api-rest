@@ -45,10 +45,16 @@ export abstract class InMemoryRepository<
     return entity;
   }
 
-  /** `id` is auto-generated unless provided (e.g. for stable seed records). */
-  create(data: Omit<T, 'id' | 'createdAt' | 'updatedAt'>, id: string = uuidv4()): T {
-    const now = new Date();
-    const entity = { ...data, id, createdAt: now, updatedAt: now } as unknown as T;
+  /**
+   * `id` is auto-generated unless provided (e.g. for stable seed records).
+   * `createdAt` defaults to now; seed data passes a past date so it spreads over time.
+   */
+  create(
+    data: Omit<T, 'id' | 'createdAt' | 'updatedAt'>,
+    id: string = uuidv4(),
+    createdAt: Date = new Date(),
+  ): T {
+    const entity = { ...data, id, createdAt, updatedAt: createdAt } as unknown as T;
     this.store.set(entity.id, entity);
     return entity;
   }

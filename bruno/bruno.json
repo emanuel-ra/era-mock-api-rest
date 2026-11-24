@@ -1,0 +1,9 @@
+{
+  "version": "1",
+  "name": "era-mock-api",
+  "type": "collection",
+  "ignore": [
+    "node_modules",
+    ".git"
+  ]
+}

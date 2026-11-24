@@ -1,6 +1,6 @@
 import { INestApplication } from '@nestjs/common';
 import request from 'supertest';
-import { createApp, loginAll, SeededRole } from './helpers';
+import { compareBy, createApp, expectSorted, loginAll, SeededRole } from './helpers';
 
 const UNKNOWN_ID = '11111111-1111-4111-8111-111111111111';
 
@@ -21,14 +21,17 @@ describe('Orders (e2e)', () => {
     return res.body.id;
   }
 
-  async function createProduct(price: number): Promise<string> {
+  async function createProduct(price: number, extra: Record<string, unknown> = {}): Promise<string> {
     const res = await http()
       .post('/products')
       .set(auth('admin'))
-      .send({ name: `Order Product ${++counter}`, price })
+      .send({ name: `Order Product ${++counter}`, price, stock: 100, ...extra })
       .expect(201);
     return res.body.id;
   }
+
+  const getProduct = async (id: string) =>
+    (await http().get(`/products/${id}`).set(auth('viewer')).expect(200)).body;
 
   async function createOrder(body: Record<string, unknown> = {}) {
     const customerId = body.customerId ?? (await createCustomer());
@@ -250,6 +253,118 @@ describe('Orders (e2e)', () => {
 
       await http().delete(`/orders/${order.id}`).set(auth('admin')).expect(204);
       await http().get(`/orders/${order.id}`).set(auth('admin')).expect(404);
+    });
+  });
+
+  describe('PATCH /orders/:id/status stock', () => {
+    it('takes stock when paid and gives it back when a paid order is cancelled', async () => {
+      const productId = await createProduct(10, { stock: 3 });
+      const order = await createOrder({ items: [{ productId, quantity: 3 }] });
+
+      await setStatus(order.id, 'paid').expect(200);
+      expect(await getProduct(productId)).toMatchObject({ stock: 0, status: 'out_of_stock' });
+
+      await setStatus(order.id, 'cancelled').expect(200);
+      expect(await getProduct(productId)).toMatchObject({ stock: 3, status: 'active' });
+    });
+
+    it('returns 409 with the missing products and changes nothing when stock is short', async () => {
+      const enough = await createProduct(10, { stock: 5 });
+      const short = await createProduct(10, { stock: 1 });
+      const order = await createOrder({
+        items: [
+          { productId: enough, quantity: 2 },
+          { productId: short, quantity: 4 },
+        ],
+      });
+
+      const res = await setStatus(order.id, 'paid').expect(409);
+
+      expect(res.body).toMatchObject({
+        statusCode: 409,
+        error: 'Conflict',
+        missing: [{ productId: short, requested: 4, available: 1 }],
+      });
+      expect(res.body.message).toContain('Insufficient stock');
+      expect((await getProduct(enough)).stock).toBe(5);
+      expect((await getProduct(short)).stock).toBe(1);
+      const after = await http().get(`/orders/${order.id}`).set(auth('viewer')).expect(200);
+      expect(after.body.status).toBe('pending');
+    });
+
+    it('ignores deleted products when paying', async () => {
+      const kept = await createProduct(10, { stock: 2 });
+      const deleted = await createProduct(10, { stock: 0 });
+      const order = await createOrder({
+        items: [
+          { productId: kept, quantity: 1 },
+          { productId: deleted, quantity: 1 },
+        ],
+      });
+      await http().delete(`/products/${deleted}`).set(auth('admin')).expect(204);
+
+      await setStatus(order.id, 'paid').expect(200);
+
+      expect((await getProduct(kept)).stock).toBe(1);
+    });
+
+    it('does not change stock when creating an order or cancelling a pending one', async () => {
+      const productId = await createProduct(10, { stock: 4 });
+      const order = await createOrder({ items: [{ productId, quantity: 2 }] });
+
+      await setStatus(order.id, 'cancelled').expect(200);
+
+      expect((await getProduct(productId)).stock).toBe(4);
+    });
+  });
+
+  describe('GET /orders sorting', () => {
+    const list = async (query: string) => {
+      const res = await http().get(`/orders?limit=100&${query}`).set(auth('viewer')).expect(200);
+      expect(res.body.data.length).toBe(res.body.meta.total);
+      return res.body.data as Array<{ total: number; status: string; createdAt: string }>;
+    };
+
+    it('sorts by total ascending', async () => {
+      const data = await list('sortBy=total');
+      expectSorted(
+        data.map((o) => o.total),
+        'asc',
+        compareBy.number,
+      );
+    });
+
+    it('sorts by total descending', async () => {
+      const data = await list('sortBy=total&order=desc');
+      expectSorted(
+        data.map((o) => o.total),
+        'desc',
+        compareBy.number,
+      );
+    });
+
+    it('sorts by status and createdAt', async () => {
+      const byStatus = await list('sortBy=status&order=desc');
+      expectSorted(
+        byStatus.map((o) => o.status),
+        'desc',
+        compareBy.text,
+      );
+
+      const byDate = await list('sortBy=createdAt&order=asc');
+      expectSorted(
+        byDate.map((o) => o.createdAt),
+        'asc',
+        compareBy.date,
+      );
+    });
+
+    it.each(['customerId', 'notes', 'unknown'])('returns 400 for sortBy=%s', (field) => {
+      return http().get(`/orders?sortBy=${field}`).set(auth('viewer')).expect(400);
+    });
+
+    it('returns 400 for an invalid order', () => {
+      return http().get('/orders?sortBy=total&order=1').set(auth('viewer')).expect(400);
     });
   });
 });

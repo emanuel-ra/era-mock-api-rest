@@ -1,0 +1,23 @@
+meta {
+  name: List users filtered and sorted
+  type: http
+  seq: 2
+}
+
+get {
+  url: {{baseUrl}}/users?email=mock.dev&sortBy=email&order=asc
+  body: none
+  auth: inherit
+}
+
+params:query {
+  ~name: admin
+  email: mock.dev
+  ~role: viewer
+  sortBy: email
+  order: asc
+}
+
+assert {
+  res.status: eq 200
+}

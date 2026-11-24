@@ -1,0 +1,21 @@
+meta {
+  name: Sales by month
+  type: http
+  seq: 3
+}
+
+get {
+  url: {{baseUrl}}/stats/sales?from=2026-01-01&to=2026-12-31&groupBy=month
+  body: none
+  auth: inherit
+}
+
+params:query {
+  from: 2026-01-01
+  to: 2026-12-31
+  groupBy: month
+}
+
+assert {
+  res.status: eq 200
+}

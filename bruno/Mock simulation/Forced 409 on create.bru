@@ -1,0 +1,27 @@
+meta {
+  name: Forced 409 on create
+  type: http
+  seq: 4
+}
+
+post {
+  url: {{baseUrl}}/customers
+  body: json
+  auth: inherit
+}
+
+headers {
+  x-mock-status: 409
+}
+
+body:json {
+  {}
+}
+
+assert {
+  res.status: eq 409
+}
+
+docs {
+  The handler does not run: nothing is created and the body is not validated.
+}

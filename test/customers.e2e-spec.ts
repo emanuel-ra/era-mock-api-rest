@@ -1,6 +1,6 @@
 import { INestApplication } from '@nestjs/common';
 import request from 'supertest';
-import { createApp, loginAll, SeededRole } from './helpers';
+import { compareBy, createApp, expectSorted, loginAll, SeededRole } from './helpers';
 
 describe('Customers (e2e)', () => {
   let app: INestApplication;
@@ -180,6 +180,64 @@ describe('Customers (e2e)', () => {
 
       await http().delete(`/customers/${customer.id}`).set(auth('admin')).expect(409);
       await http().get(`/customers/${customer.id}`).set(auth('admin')).expect(200);
+    });
+  });
+
+  describe('GET /customers sorting', () => {
+    const list = async (query: string) => {
+      const res = await http().get(`/customers?limit=100&${query}`).set(auth('viewer')).expect(200);
+      expect(res.body.data.length).toBe(res.body.meta.total);
+      return res.body.data as Array<{ name: string; email: string; city: string; createdAt: string }>;
+    };
+
+    it('sorts by name ascending', async () => {
+      const data = await list('sortBy=name');
+      expectSorted(
+        data.map((c) => c.name),
+        'asc',
+        compareBy.text,
+      );
+    });
+
+    it('sorts by email descending', async () => {
+      const data = await list('sortBy=email&order=desc');
+      expectSorted(
+        data.map((c) => c.email),
+        'desc',
+        compareBy.text,
+      );
+    });
+
+    it('sorts by createdAt descending, newest first', async () => {
+      const customer = await createCustomer();
+      const data = await list('sortBy=createdAt&order=desc');
+      expectSorted(
+        data.map((c) => c.createdAt),
+        'desc',
+        compareBy.date,
+      );
+      expect(data[0].createdAt).toBe(customer.createdAt);
+    });
+
+    it('sorts by city and puts customers without a city last', async () => {
+      const customer = await createCustomer();
+      const data = await list('sortBy=city&order=asc');
+      const withCity = data.filter((c) => c.city);
+      expect(data.slice(0, withCity.length)).toEqual(withCity);
+      expectSorted(
+        withCity.map((c) => c.city),
+        'asc',
+        compareBy.text,
+      );
+      expect(data.slice(withCity.length).some((c) => c.email === customer.email)).toBe(true);
+    });
+
+    it.each(['phone', 'country', 'unknown'])('returns 400 for sortBy=%s', (field) => {
+      return http().get(`/customers?sortBy=${field}`).set(auth('viewer')).expect(400);
+    });
+
+    it('returns 400 for an invalid order', () => {
+      return http().get('/customers?sortBy=name&order=DESC').set(auth('viewer')).expect(400);
     });
   });
 });

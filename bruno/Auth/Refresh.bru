@@ -1,0 +1,36 @@
+meta {
+  name: Refresh
+  type: http
+  seq: 6
+}
+
+post {
+  url: {{baseUrl}}/auth/refresh
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "refreshToken": "{{refreshToken}}"
+  }
+}
+
+assert {
+  res.status: eq 200
+}
+
+script:pre-request {
+  // Kept for "Refresh reused token", which sends it again after it is rotated.
+  bru.setEnvVar("rotatedRefreshToken", bru.getEnvVar("refreshToken"));
+}
+
+script:post-response {
+  bru.setEnvVar("token", res.body.accessToken);
+  bru.setEnvVar("refreshToken", res.body.refreshToken);
+}
+
+docs {
+  Exchanges the refresh token saved by a Login request for a new pair and saves both.
+  Each refresh token works once: sending one that was already exchanged returns 401 and revokes the whole session.
+}

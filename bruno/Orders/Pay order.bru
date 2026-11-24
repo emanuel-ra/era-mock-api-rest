@@ -1,0 +1,25 @@
+meta {
+  name: Pay order
+  type: http
+  seq: 6
+}
+
+patch {
+  url: {{baseUrl}}/orders/{{orderId}}/status
+  body: json
+  auth: inherit
+}
+
+body:json {
+  {
+    "status": "paid"
+  }
+}
+
+assert {
+  res.status: eq 200
+}
+
+docs {
+  `pending → paid` takes the quantities out of product stock.
+}

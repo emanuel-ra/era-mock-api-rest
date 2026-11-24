@@ -48,7 +48,22 @@ npm test           # unit tests
 npm run test:e2e   # e2e tests over HTTP
 ```
 
-CI runs lint, type-check, both test suites and the build on every pull request and every push to `main` or `dev`, and builds and smoke-tests the Docker image.
+CI runs lint, type-check, both test suites and the build on every pull request and every push to `main` or `dev`, and builds and smoke-tests the Docker image (details in [docs/ci-and-docker.md](docs/ci-and-docker.md)).
+
+## Manual testing
+
+The `bruno/` folder is a [Bruno](https://www.usebruno.com/) collection with a request for every endpoint. Open it in Bruno, pick the `local` environment, run one of the `Auth/Login` requests and the token is reused by the rest. How to run it from the terminal or against another port: [docs/manual-testing.md](docs/manual-testing.md).
+
+## Docs
+
+- [docs/features.md](docs/features.md): modules, endpoints, roles, filters and API conventions.
+- [docs/architecture.md](docs/architecture.md): how the in-memory data layer, auth, pagination and errors work.
+- [docs/seed-data.md](docs/seed-data.md): seed data and default credentials.
+- [docs/adding-a-resource.md](docs/adding-a-resource.md): steps to add a new resource.
+- [docs/manual-testing.md](docs/manual-testing.md): the Bruno collection.
+- [docs/ci-and-docker.md](docs/ci-and-docker.md): CI jobs and the Docker image.
+- [docs/deploy.md](docs/deploy.md): deploying to a server in the local network, checks and rollback.
+- [AGENTS.md](AGENTS.md): guide for AI coding agents and contributors (commands, conventions, rules).
 
 ## Development workflow
 
@@ -83,15 +98,17 @@ A worktree starts without `node_modules` or `.env`, so each one needs `npm ci` (
 
 ### Running it with Claude Code
 
-The project ships three skills in `.claude/skills/` that run the whole cycle:
+The project ships five skills in `.claude/skills/` that run the whole cycle:
 
 | Command | Run from | What it does |
 |---------|----------|--------------|
-| `/start-work <request>` | main checkout | Creates the worktree from `origin/dev`, sets it up, asks for missing requirements, implements, runs type-check, lint and tests, commits, rebases on `origin/dev`, and stops at a review gate. After you approve, it pushes and opens the PR into `dev`. |
+| `/plan-feature [#issue]` | main checkout | Plans a feature like a product owner before any code: asks discovery questions, challenges assumptions, writes user stories with acceptance criteria and technical tasks, and after you approve, creates an `epic` issue (the spec) with one `story` sub-issue per story. Given an issue number, it refines that issue. |
+| `/start-work <request or #story>` | main checkout | Creates the worktree from `origin/dev`, sets it up, asks for missing requirements, implements, runs type-check, lint and tests, commits, rebases on `origin/dev`, and stops at a review gate. After you approve, it pushes and opens the PR into `dev`. |
 | `/finish-work` | the session that worked on it | After you merge the PR on GitHub: checks it is merged, leaves and removes the worktree, deletes the local branch and pulls `dev`. |
-| `/release` | main checkout | Checks that `dev` is green, builds a changelog from the merged PRs and, after you approve, opens the release PR from `dev` into `main`. |
+| `/release` | main checkout | Checks that `dev` is green, builds a changelog from the merged PRs, runs `/audit-docs` (stops on FAIL) and, after you approve, opens the release PR from `dev` into `main`. |
+| `/audit-docs [files]` | anywhere | Checks the README, `AGENTS.md`, `CLAUDE.md`, the Copilot instructions and `docs/` against the code, one read-only `doc-auditor` subagent per file, and answers PASS (no high-severity findings) or FAIL. It only reports in the chat. |
 
-Claude never pushes or opens a PR without asking first. A hook (`.claude/hooks/protect-branches.sh`) blocks it from editing files or committing in any checkout that is on `main` or `dev`.
+Claude never pushes or opens a PR without asking first. Two hooks in `.claude/hooks/` back this up: `protect-branches.sh` blocks it from editing files or committing in any checkout that is on `main` or `dev`, and `related-tests.sh` runs the tests related to every `.ts` file it edits and reports failures back to it.
 
 After creating the worktree, `/start-work` asks where to continue:
 
@@ -107,7 +124,8 @@ After creating the worktree, `/start-work` asks where to continue:
 A typical cycle:
 
 ```text
-/start-work add endpoints for invoices   → review → approve → PR #N into dev
+/plan-feature invoices                    → epic #40 with stories #41, #42
+/start-work #41                           → review → approve → PR #N into dev (closes #41)
   (merge PR #N on GitHub with "Create a merge commit")
 /finish-work                              → worktree removed, dev updated
   ... more features ...

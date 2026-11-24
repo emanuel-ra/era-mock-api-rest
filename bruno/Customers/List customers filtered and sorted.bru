@@ -1,0 +1,26 @@
+meta {
+  name: List customers filtered and sorted
+  type: http
+  seq: 2
+}
+
+get {
+  url: {{baseUrl}}/customers?name=a&isActive=true&sortBy=createdAt&order=desc&page=2&limit=5
+  body: none
+  auth: inherit
+}
+
+params:query {
+  name: a
+  isActive: true
+  ~city: York
+  ~country: Mexico
+  sortBy: createdAt
+  order: desc
+  page: 2
+  limit: 5
+}
+
+assert {
+  res.status: eq 200
+}

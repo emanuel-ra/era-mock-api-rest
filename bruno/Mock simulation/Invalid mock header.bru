@@ -1,0 +1,23 @@
+meta {
+  name: Invalid mock header
+  type: http
+  seq: 6
+}
+
+get {
+  url: {{baseUrl}}/customers
+  body: none
+  auth: inherit
+}
+
+headers {
+  x-mock-status: 200
+}
+
+assert {
+  res.status: eq 400
+}
+
+docs {
+  Only 4xx/5xx codes are allowed: 400.
+}

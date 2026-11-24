@@ -6,6 +6,8 @@ import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
 import { JwtStrategy } from './strategies/jwt.strategy';
 import { UsersRepository } from './repositories/users.repository';
+import { RefreshTokensRepository } from './repositories/refresh-tokens.repository';
+import { REFRESH_TOKEN_TTL_MS, refreshTokenTtlFromConfig } from './refresh-token.config';
 
 @Module({
   imports: [
@@ -20,7 +22,14 @@ import { UsersRepository } from './repositories/users.repository';
     }),
   ],
   controllers: [AuthController],
-  providers: [AuthService, JwtStrategy, UsersRepository],
-  exports: [AuthService, UsersRepository],
+  providers: [
+    AuthService,
+    JwtStrategy,
+    UsersRepository,
+    RefreshTokensRepository,
+    // Resolved on boot, so an invalid JWT_REFRESH_EXPIRES_IN stops the app.
+    { provide: REFRESH_TOKEN_TTL_MS, inject: [ConfigService], useFactory: refreshTokenTtlFromConfig },
+  ],
+  exports: [AuthService, UsersRepository, RefreshTokensRepository],
 })
 export class AuthModule {}

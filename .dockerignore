@@ -2,6 +2,7 @@
 node_modules
 dist
 coverage
+reports
 
 # Secrets and local config: pass them as environment variables instead
 .env
@@ -23,3 +24,6 @@ Dockerfile
 .dockerignore
 compose.yaml
 .DS_Store
+
+# Manual testing collection (Bruno)
+bruno

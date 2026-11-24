@@ -1,0 +1,15 @@
+meta {
+  name: Get customer
+  type: http
+  seq: 4
+}
+
+get {
+  url: {{baseUrl}}/customers/{{customerId}}
+  body: none
+  auth: inherit
+}
+
+assert {
+  res.status: eq 200
+}

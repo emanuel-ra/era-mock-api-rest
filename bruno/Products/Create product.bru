@@ -1,0 +1,31 @@
+meta {
+  name: Create product
+  type: http
+  seq: 4
+}
+
+post {
+  url: {{baseUrl}}/products
+  body: json
+  auth: inherit
+}
+
+body:json {
+  {
+    "name": "Bruno Mug",
+    "price": 12.5,
+    "description": "Created from the Bruno collection",
+    "sku": "BRU-{{$timestamp}}",
+    "stock": 20,
+    "categoryId": "{{seedCategoryId}}",
+    "imageUrl": "https://example.com/mug.png"
+  }
+}
+
+assert {
+  res.status: eq 201
+}
+
+script:post-response {
+  bru.setVar("productId", res.body.id);
+}

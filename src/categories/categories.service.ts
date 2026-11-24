@@ -5,6 +5,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { paginate, PaginatedResult } from '../core/dto/pagination.dto';
+import { sortItems } from '../core/utils/sort';
 import { slugify } from '../core/utils/slugify';
 import { ProductsRepository } from '../products/products.repository';
 import { CategoriesRepository } from './categories.repository';
@@ -21,8 +22,8 @@ export class CategoriesService {
   ) {}
 
   findAll(filters: FilterCategoriesDto): PaginatedResult<CategoryEntity> {
-    const { page, limit, ...rest } = filters;
-    return paginate(this.repo.findAll(rest), page, limit);
+    const { page, limit, sortBy, order, ...rest } = filters;
+    return paginate(sortItems(this.repo.findAll(rest), sortBy, order), page, limit);
   }
 
   findOne(id: string): CategoryEntity {
